@@ -1,0 +1,296 @@
+// vidntec — Prisma schema
+// Lives in packages/shared so the generated client + model types are importable
+// by BOTH apps/api and apps/web via `@vidntec/shared/prisma`.
+//
+// Conventions:
+//   - All money is stored as INTEGER CENTS. Never floats.
+//   - Order lines snapshot product data so historical orders are immutable.
+//   - `role` defaults to `customer` at the DB level and is never client-settable.
+
+generator client {
+  provider   = "prisma-client-js"
+  output     = "../generated/prisma"
+  engineType = "library"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  customer
+  admin
+}
+
+enum ProductStatus {
+  draft
+  active
+}
+
+enum OrderStatus {
+  pending
+  confirmed // admin has accepted the order (COD: not yet paid; card: payment received)
+  fulfilled
+  delivered
+  cancelled
+  refunded
+}
+
+enum PaymentMethod {
+  stripe
+  cod
+}
+
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  passwordHash    String
+  role            Role      @default(customer)
+  emailVerifiedAt DateTime?
+  createdAt       DateTime  @default(now())
+
+  refreshTokens       RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
+  emailOtps           EmailOtp[]
+  carts               Cart[]
+  orders              Order[]
+
+  @@map("users")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique // sha256 of the emailed token
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+model EmailOtp {
+  id        String    @id @default(cuid())
+  userId    String
+  codeHash  String // sha256 of the 6-digit code (TokenService.hash)
+  attempts  Int       @default(0)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("email_otps")
+}
+
+model RefreshToken {
+  id           String   @id @default(cuid())
+  userId       String
+  tokenHash    String   @unique
+  expiresAt    DateTime
+  revoked      Boolean  @default(false)
+  // rotation audit trail: the token that superseded this one
+  replacedById String?  @unique
+  createdAt    DateTime @default(now())
+
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replacedBy RefreshToken?  @relation("TokenRotation", fields: [replacedById], references: [id], onDelete: SetNull)
+  replaces   RefreshToken?  @relation("TokenRotation")
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+model Product {
+  id          String        @id @default(cuid())
+  title       String
+  slug        String        @unique
+  description String        @default("")
+  status      ProductStatus @default(draft)
+  featured    Boolean       @default(false) // shown in the storefront "Trending" section
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  images   ProductImage[]
+  variants Variant[]
+
+  @@index([status])
+  @@index([featured])
+  @@map("products")
+}
+
+model ProductImage {
+  id        String @id @default(cuid())
+  productId String
+  url       String
+  // Cloudinary public_id, kept so admin can delete/transform the asset
+  publicId  String?
+  position  Int    @default(0)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("product_images")
+}
+
+model Variant {
+  id             String  @id @default(cuid())
+  productId      String
+  name           String
+  price          Int // integer minor units (PKR paisa)
+  compareAtPrice Int? // optional "was" price; on sale when compareAtPrice > price
+  sku            String  @unique
+  stock          Int     @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+
+  @@index([productId])
+  @@map("variants")
+}
+
+model Cart {
+  id        String   @id @default(cuid())
+  userId    String? // null for guest carts
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  items CartItem[]
+
+  @@index([userId])
+  @@map("carts")
+}
+
+model CartItem {
+  id        String @id @default(cuid())
+  cartId    String
+  variantId String
+  quantity  Int
+
+  cart    Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  variant Variant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@unique([cartId, variantId])
+  @@index([cartId])
+  @@map("cart_items")
+}
+
+model Order {
+  id                    String        @id @default(cuid())
+  userId                String? // null for guest checkout
+  email                 String
+  status                OrderStatus   @default(pending)
+  paymentMethod         PaymentMethod
+  currency              String        @default("pkr")
+  subtotal              Int // integer cents
+  shipping              Int
+  tax                   Int
+  total                 Int
+  stripePaymentIntentId String?
+  stripeSessionId       String?       @unique
+  shippingAddress       Json
+  trackingNumber        String?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  user  User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  items OrderItem[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([stripePaymentIntentId])
+  @@map("orders")
+}
+
+model OrderItem {
+  id            String  @id @default(cuid())
+  orderId       String
+  // kept as a soft link; nulled if the variant is later deleted.
+  // The *Snapshot fields are the source of truth for historical orders.
+  variantId     String?
+  titleSnapshot String
+  priceSnapshot Int // integer cents at time of order
+  quantity      Int
+
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variant Variant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+model ShippingRate {
+  id              String   @id @default(cuid())
+  name            String
+  price           Int // integer cents
+  minOrderForFree Int? // null = this rate is never waived by order value
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("shipping_rates")
+}
+
+model ProcessedStripeEvent {
+  id        String   @id // Stripe event id (evt_...)
+  type      String
+  createdAt DateTime @default(now())
+
+  @@map("processed_stripe_events")
+}
+
+// Snapshot of a Stripe checkout in progress. The Order is created ONLY by the
+// `checkout.session.completed` webhook, which rebuilds it from this row so
+// prices/amounts are exactly what the customer was charged.
+enum PendingCheckoutStatus {
+  open
+  consumed
+  expired
+}
+
+model PendingCheckout {
+  id              String                @id @default(cuid())
+  stripeSessionId String                @unique
+  userId          String?
+  email           String
+  shippingAddress Json
+  shippingRateId  String?
+  cartId          String?
+  currency        String                @default("pkr")
+  subtotal        Int
+  shipping        Int
+  tax             Int
+  total           Int
+  // [{ variantId, titleSnapshot, priceSnapshot, quantity }]
+  lineItems       Json
+  status          PendingCheckoutStatus @default(open)
+  createdAt       DateTime              @default(now())
+  expiresAt       DateTime
+
+  @@index([status])
+  @@map("pending_checkouts")
+}
+
+// Single-row store configuration. Seam for swapping in Stripe Tax later.
+model StoreSettings {
+  id                Int      @id @default(1)
+  taxEnabled        Boolean  @default(false)
+  taxRateBps        Int      @default(0) // basis points: 875 = 8.75%
+  taxLabel          String   @default("Tax")
+  currency          String   @default("pkr")
+  storeName         String   @default("VIDNTEC")
+  supportEmail      String   @default("")
+  updatedAt         DateTime @updatedAt
+
+  @@map("store_settings")
+}

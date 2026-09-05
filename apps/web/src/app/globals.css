@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+  body {
+    @apply bg-paper-sunken text-ink antialiased;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-semibold tracking-tight;
+  }
+}
+
+@layer components {
+  /* Section header used across storefront + admin: red bolt + bold title. */
+  .section-heading {
+    @apply flex items-center gap-2 text-lg font-semibold text-ink;
+  }
+}

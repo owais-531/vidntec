@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "//": "Vercel project Root Directory MUST be set to `apps/web` in the dashboard. These commands run from that root; `cd ../..` climbs to the workspace root so Turborepo can build `@vidntec/shared` first.",
+  "framework": "nextjs",
+  "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
+  "buildCommand": "cd ../.. && pnpm turbo run build --filter=@vidntec/web...",
+  "ignoreCommand": "npx turbo-ignore @vidntec/web",
+  "outputDirectory": ".next"
+}

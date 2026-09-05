@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    env:
+      # Dummy values so `prisma generate` and env-validated builds succeed.
+      # No real database is contacted in CI.
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci?sslmode=disable
+      # Dummy secret so the web build's env validation passes (no tokens are issued in CI).
+      JWT_ACCESS_SECRET: ci-dummy-secret-ci-dummy-secret-ci-dummy-secret
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Prisma schema is valid
+        run: pnpm --filter @vidntec/shared exec prisma validate
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:4000
+          API_URL: http://localhost:4000
+          # JWT_ACCESS_SECRET inherited from job env above

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import { Logo } from '@/components/ui/logo';
 import { SearchForm } from './search-form';
+import { SignOutButton } from './sign-out-button';
 
 export function SiteHeader({
   cartCount = 0,
@@ -50,6 +51,7 @@ export function SiteHeader({
               <span aria-hidden>👤</span>
               <span className="hidden sm:inline">{authed ? 'Orders' : 'Account'}</span>
             </Link>
+            {authed ? <SignOutButton /> : null}
             <Link href="/cart" className="flex items-center gap-1.5 hover:opacity-90">
               <span aria-hidden>🛒</span>
               <span className="hidden sm:inline">Cart</span>

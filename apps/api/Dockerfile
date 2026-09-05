@@ -11,10 +11,10 @@ WORKDIR /app
 FROM base AS deps
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json .npmrc turbo.json tsconfig.base.json ./
 COPY packages/shared/package.json packages/shared/
+COPY packages/shared/prisma packages/shared/prisma
 COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
-    pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile
 
 # ── build: shared (prisma generate + tsc) then the API ───────────────────────
 FROM deps AS build

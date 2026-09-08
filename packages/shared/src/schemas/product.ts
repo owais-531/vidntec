@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { centsSchema, slugSchema } from './common';
-import { PRODUCT_STATUSES } from '../constants';
+import { MEDIA_TYPES, PRODUCT_STATUSES } from '../constants';
+
+export const mediaTypeSchema = z.enum(MEDIA_TYPES);
 
 // ── inputs (admin) ──────────────────────────────────────────────────────────
 
@@ -64,6 +66,7 @@ export type AdminInventoryQuery = z.infer<typeof adminInventoryQuerySchema>;
 export const attachImageSchema = z.object({
   url: z.string().url(),
   publicId: z.string().min(1).max(300),
+  type: mediaTypeSchema.default('image'),
 });
 export type AttachImageInput = z.infer<typeof attachImageSchema>;
 
@@ -84,6 +87,7 @@ export const productImageSchema = z.object({
   url: z.string().url(),
   publicId: z.string().nullable(),
   position: z.number().int(),
+  type: mediaTypeSchema,
 });
 export type ProductImageDto = z.infer<typeof productImageSchema>;
 
@@ -205,7 +209,9 @@ export const publicProductSchema = z.object({
   slug: z.string(),
   description: z.string(),
   featured: z.boolean(),
-  images: z.array(z.object({ url: z.string().url(), position: z.number().int() })),
+  images: z.array(
+    z.object({ url: z.string().url(), position: z.number().int(), type: mediaTypeSchema }),
+  ),
   variants: z.array(publicVariantSchema),
   inStock: z.boolean(),
   updatedAt: z.string().datetime(),

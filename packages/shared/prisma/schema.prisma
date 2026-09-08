@@ -132,6 +132,8 @@ model ProductImage {
   // Cloudinary public_id, kept so admin can delete/transform the asset
   publicId  String?
   position  Int    @default(0)
+  // "image" | "video" — a video is played inline in the storefront gallery
+  type      String @default("image")
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 

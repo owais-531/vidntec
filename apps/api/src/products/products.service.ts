@@ -13,6 +13,7 @@ import {
   type AttachImageInput,
   type CreateProductInput,
   type InventoryItem,
+  type MediaType,
   type ProductImageDto,
   type StockAdjustmentInput,
   type UpdateProductInput,
@@ -136,7 +137,7 @@ export class ProductsService {
     await Promise.all(
       product.images
         .filter((img) => img.publicId)
-        .map((img) => this.cloudinary.deleteAsset(img.publicId!)),
+        .map((img) => this.cloudinary.deleteAsset(img.publicId!, img.type as MediaType)),
     );
     // Variants + images cascade. OrderItem.variantId is set null (snapshots remain).
     await this.prisma.product.delete({ where: { id } });
@@ -240,6 +241,7 @@ export class ProductsService {
         url: input.url,
         publicId: input.publicId,
         position: (last?.position ?? -1) + 1,
+        type: input.type,
       },
     });
     return toImageDto(image);
@@ -268,7 +270,9 @@ export class ProductsService {
       where: { id: imageId, productId },
     });
     if (!image) throw new NotFoundException('Image not found');
-    if (image.publicId) await this.cloudinary.deleteAsset(image.publicId);
+    if (image.publicId) {
+      await this.cloudinary.deleteAsset(image.publicId, image.type as MediaType);
+    }
     await this.prisma.productImage.delete({ where: { id: imageId } });
   }
 

@@ -12,6 +12,9 @@ import {
 import { Card, CardBody } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/toast';
+import { posterUrl } from '@/lib/cloudinary-poster';
+
+const MAX_VIDEO_BYTES = 100 * 1024 * 1024; // Cloudinary free-plan per-file video cap
 
 export function ImageManager({
   productId,
@@ -35,6 +38,12 @@ export function ImageManager({
         return;
       }
       for (const file of Array.from(files)) {
+        const isVideo = file.type.startsWith('video/');
+        if (isVideo && file.size > MAX_VIDEO_BYTES) {
+          toast(`"${file.name}" is over 100 MB — please upload a shorter clip`, 'error');
+          continue;
+        }
+
         const form = new FormData();
         form.append('file', file);
         form.append('api_key', sig.data.apiKey);
@@ -43,21 +52,26 @@ export function ImageManager({
         form.append('folder', sig.data.folder);
 
         const up = await fetch(
-          `https://api.cloudinary.com/v1_1/${sig.data.cloudName}/image/upload`,
+          `https://api.cloudinary.com/v1_1/${sig.data.cloudName}/${isVideo ? 'video' : 'image'}/upload`,
           { method: 'POST', body: form },
         );
         if (!up.ok) {
           toast('Upload to Cloudinary failed', 'error');
           continue;
         }
-        const json = (await up.json()) as { secure_url: string; public_id: string };
+        const json = (await up.json()) as {
+          secure_url: string;
+          public_id: string;
+          resource_type?: string;
+        };
         const attached = await attachImageAction(productId, {
           url: json.secure_url,
           publicId: json.public_id,
+          type: json.resource_type === 'video' || isVideo ? 'video' : 'image',
         });
         if (!attached.ok) toast(attached.error, 'error');
       }
-      toast('Images uploaded');
+      toast('Media uploaded');
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = '';
@@ -82,19 +96,19 @@ export function ImageManager({
     <Card>
       <CardBody className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold">Images</h2>
+          <h2 className="text-sm font-semibold">Media</h2>
           <Button
             size="sm"
             variant="secondary"
             disabled={uploading}
             onClick={() => inputRef.current?.click()}
           >
-            {uploading ? 'Uploading…' : '+ Upload images'}
+            {uploading ? 'Uploading…' : '+ Upload media'}
           </Button>
           <input
             ref={inputRef}
             type="file"
-            accept="image/*"
+            accept="image/*,video/*"
             multiple
             hidden
             onChange={(e) => void onFiles(e.target.files)}
@@ -103,7 +117,8 @@ export function ImageManager({
 
         {ordered.length === 0 ? (
           <p className="text-xs text-ink-muted">
-            No images yet. The first image is used as the product thumbnail.
+            No media yet. Add images and short product videos — the first image is used as
+            the product thumbnail.
           </p>
         ) : (
           <div className="grid grid-cols-4 gap-3">
@@ -113,13 +128,20 @@ export function ImageManager({
                 className="group relative overflow-hidden rounded-card border border-paper-line bg-paper-sunken"
               >
                 <Image
-                  src={img.url}
+                  src={img.type === 'video' ? posterUrl(img.url) : img.url}
                   alt=""
                   width={200}
                   height={200}
                   className="aspect-square w-full object-cover"
                 />
-                {i === 0 ? (
+                {img.type === 'video' ? (
+                  <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-black/55 text-xs text-white">
+                      ▶
+                    </span>
+                  </span>
+                ) : null}
+                {i === 0 && img.type !== 'video' ? (
                   <span className="absolute left-1 top-1 rounded bg-brand-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
                     Primary
                   </span>

@@ -11,7 +11,13 @@ export type ProductWithRelations = Prisma.ProductGetPayload<{
 }>;
 
 export function toImageDto(image: ProductImage): ProductImageDto {
-  return { id: image.id, url: image.url, publicId: image.publicId, position: image.position };
+  return {
+    id: image.id,
+    url: image.url,
+    publicId: image.publicId,
+    position: image.position,
+    type: image.type === 'video' ? 'video' : 'image',
+  };
 }
 
 export function toAdminVariant(v: Variant): AdminVariant {

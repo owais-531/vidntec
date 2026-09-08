@@ -21,7 +21,8 @@ export async function generateMetadata({
     stripHtml(product.description).slice(0, 160) ||
     `${product.title} — a made-to-order 3D-printed product from VIDNTEC.`;
   const path = `/products/${product.slug}`;
-  const images = product.images.length ? product.images.map((i) => i.url) : undefined;
+  const imageUrls = product.images.filter((i) => i.type === 'image').map((i) => i.url);
+  const images = imageUrls.length ? imageUrls : undefined;
 
   return {
     title: product.title,
@@ -60,7 +61,7 @@ export default async function ProductDetailPage({
     '@type': 'Product',
     name: product.title,
     description: stripHtml(product.description) || `${product.title} from VIDNTEC.`,
-    image: product.images.map((i) => i.url),
+    image: product.images.filter((i) => i.type === 'image').map((i) => i.url),
     url: absoluteUrl(path),
     brand: { '@type': 'Brand', name: siteConfig.name },
     offers: {

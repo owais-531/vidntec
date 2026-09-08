@@ -6,6 +6,10 @@ export type Role = (typeof ROLES)[number];
 export const PRODUCT_STATUSES = ['draft', 'active'] as const;
 export type ProductStatus = (typeof PRODUCT_STATUSES)[number];
 
+/** A product gallery item is either a still image or an inline-playable video. */
+export const MEDIA_TYPES = ['image', 'video'] as const;
+export type MediaType = (typeof MEDIA_TYPES)[number];
+
 export const ORDER_STATUSES = [
   'pending',
   'confirmed',

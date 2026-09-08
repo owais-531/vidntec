@@ -75,6 +75,31 @@ describe('StorefrontService.list', () => {
     expect(ctx.prisma.product.findMany.mock.calls[0][0].where).toMatchObject({ featured: true });
   });
 
+  it('primaryImageUrl skips a leading video and uses the first still image', async () => {
+    ctx.prisma.product.findMany.mockResolvedValue([
+      product({
+        images: [
+          { url: 'https://res.cloudinary.com/x/video/upload/v1/clip.mp4', position: 0, type: 'video' },
+          { url: 'https://img/a.jpg', position: 1, type: 'image' },
+        ],
+      }),
+    ]);
+    const { items } = await ctx.service.list(query());
+    expect(items[0].primaryImageUrl).toBe('https://img/a.jpg');
+  });
+
+  it('primaryImageUrl is null when a product has only a video', async () => {
+    ctx.prisma.product.findMany.mockResolvedValue([
+      product({
+        images: [
+          { url: 'https://res.cloudinary.com/x/video/upload/v1/clip.mp4', position: 0, type: 'video' },
+        ],
+      }),
+    ]);
+    const { items } = await ctx.service.list(query());
+    expect(items[0].primaryImageUrl).toBeNull();
+  });
+
   it('onSale filter narrows in the query and refines out false positives', async () => {
     ctx.prisma.product.findMany.mockResolvedValue([
       product({ id: 'a', variants: [{ price: 800, compareAtPrice: 1000, stock: 1, createdAt: now }] }),
@@ -106,5 +131,22 @@ describe('StorefrontService.getBySlug', () => {
     expect(res.discountPercent).toBe(20);
     expect(res.variants.find((v) => v.id === 'v1')).toMatchObject({ onSale: true, compareAtPrice: 1000 });
     expect(res.variants.find((v) => v.id === 'v2')).toMatchObject({ onSale: false, compareAtPrice: null });
+  });
+
+  it('returns gallery media sorted by position with the image/video type preserved', async () => {
+    const ctx = make();
+    ctx.prisma.product.findFirst.mockResolvedValue(
+      product({
+        images: [
+          { url: 'https://img/b.jpg', position: 1, type: 'image' },
+          { url: 'https://res.cloudinary.com/x/video/upload/v1/clip.mp4', position: 0, type: 'video' },
+        ],
+      }),
+    );
+    const res = await ctx.service.getBySlug('t');
+    expect(res.images).toEqual([
+      { url: 'https://res.cloudinary.com/x/video/upload/v1/clip.mp4', position: 0, type: 'video' },
+      { url: 'https://img/b.jpg', position: 1, type: 'image' },
+    ]);
   });
 });

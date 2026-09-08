@@ -69,7 +69,10 @@ export class StorefrontService {
     ]);
 
     let items: PublicProductListItem[] = rows.map((p) => {
-      const primary = [...p.images].sort((a, b) => a.position - b.position)[0];
+      // Cards / social previews always use a still image, never a video frame.
+      const primary = [...p.images]
+        .sort((a, b) => a.position - b.position)
+        .find((i) => i.type !== 'video');
       return {
         id: p.id,
         title: p.title,
@@ -123,7 +126,11 @@ export class StorefrontService {
       featured: product.featured,
       images: [...product.images]
         .sort((a, b) => a.position - b.position)
-        .map((i) => ({ url: i.url, position: i.position })),
+        .map((i) => ({
+          url: i.url,
+          position: i.position,
+          type: i.type === 'video' ? ('video' as const) : ('image' as const),
+        })),
       variants,
       inStock: variants.some((v) => v.inStock),
       updatedAt: product.updatedAt.toISOString(),

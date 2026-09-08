@@ -1,13 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { v2 as cloudinary } from 'cloudinary';
-import type { UploadSignatureResponse } from '@vidntec/shared';
+import type { MediaType, UploadSignatureResponse } from '@vidntec/shared';
 import type { Env } from '../config/env';
 
 /**
- * Images are uploaded straight from the browser to Cloudinary using a signed
- * payload minted here — the file never passes through our API. We only store
- * the resulting secure_url + public_id, and can delete the asset later.
+ * Images and videos are uploaded straight from the browser to Cloudinary using
+ * a signed payload minted here — the file never passes through our API. We only
+ * store the resulting secure_url + public_id (+ media type), and can delete the
+ * asset later. `resource_type` ("image" / "video") lives in the upload URL path,
+ * not the signed params, so one signature covers both.
  */
 @Injectable()
 export class CloudinaryService {
@@ -37,9 +39,9 @@ export class CloudinaryService {
     return { cloudName: this.cloudName, apiKey: this.apiKey, timestamp, signature, folder };
   }
 
-  async deleteAsset(publicId: string): Promise<void> {
+  async deleteAsset(publicId: string, type: MediaType = 'image'): Promise<void> {
     try {
-      await cloudinary.uploader.destroy(publicId);
+      await cloudinary.uploader.destroy(publicId, { resource_type: type });
     } catch (err) {
       // Non-fatal: log and continue so the DB row can still be removed.
       this.logger.warn(`Failed to delete Cloudinary asset ${publicId}: ${String(err)}`);

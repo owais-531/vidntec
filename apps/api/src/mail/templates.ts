@@ -21,7 +21,7 @@ interface OrderEmailData {
 
 const wrap = (title: string, body: string) => `
 <div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:560px;margin:0 auto;color:#1f1f1f">
-  <h1 style="font-size:18px;color:#e92c46;margin:0 0 4px">⚡ VIDNTEC</h1>
+  <h1 style="font-size:18px;color:#8a1a1c;margin:0 0 4px">⚡ VIDNTEC</h1>
   <h2 style="font-size:16px;margin:16px 0 12px">${title}</h2>
   ${body}
   <p style="font-size:12px;color:#8a8a8a;margin-top:24px">3D-printed products, made to order.</p>
@@ -103,7 +103,7 @@ export function passwordResetEmail(resetUrl: string): { subject: string; html: s
     html: wrap(
       'Reset your password',
       `<p style="font-size:14px">Click below to set a new password. This link expires in 1 hour. If you didn't request it, ignore this email.</p>
-       <p><a href="${escapeHtml(resetUrl)}" style="display:inline-block;background:#e92c46;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;font-size:14px">Reset password</a></p>`,
+       <p><a href="${escapeHtml(resetUrl)}" style="display:inline-block;background:#8a1a1c;color:#fff;padding:10px 18px;border-radius:6px;text-decoration:none;font-size:14px">Reset password</a></p>`,
     ),
   };
 }

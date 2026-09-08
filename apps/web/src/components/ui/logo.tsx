@@ -1,10 +1,11 @@
 import Image from 'next/image';
 import { cn } from '@/lib/cn';
 import logo from './logo.png';
+import whiteLogo from './white-logo.png';
 
 /**
  * The VIDNTEC wordmark. Pass a height via `className` (e.g. `h-7 w-auto`).
- * `onDark` knocks the mark out to solid white for the red header.
+ * `onDark` swaps in the white wordmark asset for use on the red header.
  */
 export function Logo({
   className,
@@ -17,10 +18,10 @@ export function Logo({
 }) {
   return (
     <Image
-      src={logo}
+      src={onDark ? whiteLogo : logo}
       alt="VIDNTEC"
       priority={priority}
-      className={cn('w-auto', onDark && 'brightness-0 invert', className)}
+      className={cn('w-auto', className)}
     />
   );
 }

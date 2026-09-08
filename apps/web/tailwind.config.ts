@@ -11,17 +11,17 @@ const config: Config = {
     extend: {
       colors: {
         brand: {
-          50: '#fdecef',
-          100: '#fbd0d9',
-          200: '#f4a3b4',
-          300: '#ec748f',
-          400: '#e6486d',
-          500: '#e92c46', // primary red (header / buttons / prices)
-          600: '#cf2038', // hover / pressed
-          700: '#a81b2f',
-          800: '#7f1624',
-          900: '#5c111b',
-          strip: '#c4283d', // dark top utility strip
+          50: '#faeded',
+          100: '#f4d7d8',
+          200: '#e6b3b3',
+          300: '#d27f80',
+          400: '#c6393c',
+          500: '#8a1a1c', // primary red (header / buttons / prices)
+          600: '#671112', // hover / pressed
+          700: '#510d0e',
+          800: '#3b0a0b',
+          900: '#270707',
+          strip: '#721314', // dark top utility strip
         },
         accent: {
           50: '#f1f7f4',

@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { Logo } from '@/components/ui/logo';
 
 export function SiteFooter() {
@@ -9,13 +8,26 @@ export function SiteFooter() {
           <Logo className="h-4" />
           <span>· 3D-printed products, made to order.</span>
         </div>
-        <div className="flex gap-4">
-          <Link href="/products" className="hover:text-ink">
-            Catalog
-          </Link>
-          <Link href="/login" className="hover:text-ink">
-            Account
-          </Link>
+        <div className="flex flex-col gap-1 sm:items-end">
+          <a href="mailto:info@vidntec.com" className="hover:text-ink">
+            info@vidntec.com
+          </a>
+          <a
+            href="https://wa.me/923319869464"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-ink"
+          >
+            +92 331 9869464
+          </a>
+          <a
+            href="https://wa.me/923027828356"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-ink"
+          >
+            +92 302 7828356
+          </a>
         </div>
       </div>
     </footer>

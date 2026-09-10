@@ -7,6 +7,7 @@ import { Logo } from '@/components/ui/logo';
 
 const NAV = [
   { href: '/admin/products', label: 'Products', icon: '📦' },
+  { href: '/admin/categories', label: 'Categories', icon: '🏷️' },
   { href: '/admin/inventory', label: 'Inventory', icon: '📊' },
   { href: '/admin/orders', label: 'Orders', icon: '🧾' },
   { href: '/admin/shipping', label: 'Shipping', icon: '🚚' },

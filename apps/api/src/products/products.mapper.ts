@@ -7,7 +7,7 @@ import type {
 import type { Prisma, ProductImage, Variant } from '@vidntec/shared/prisma';
 
 export type ProductWithRelations = Prisma.ProductGetPayload<{
-  include: { images: true; variants: true };
+  include: { images: true; variants: true; category: true };
 }>;
 
 export function toImageDto(image: ProductImage): ProductImageDto {
@@ -40,6 +40,8 @@ export function toAdminProduct(p: ProductWithRelations): AdminProduct {
     description: p.description,
     status: p.status,
     featured: p.featured,
+    categoryId: p.categoryId,
+    categoryName: p.category?.name ?? null,
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString(),
     images: [...p.images].sort((a, b) => a.position - b.position).map(toImageDto),
@@ -58,6 +60,7 @@ export function toListItem(p: ProductWithRelations): AdminProductListItem {
     slug: p.slug,
     status: p.status,
     featured: p.featured,
+    categoryName: p.category?.name ?? null,
     primaryImageUrl: primary?.url ?? null,
     variantCount: p.variants.length,
     totalStock: p.variants.reduce((sum, v) => sum + v.stock, 0),

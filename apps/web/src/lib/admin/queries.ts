@@ -1,5 +1,6 @@
 import 'server-only';
 import type {
+  AdminCategory,
   AdminOrderListItem,
   AdminOrderListQuery,
   AdminProduct,
@@ -67,6 +68,10 @@ export async function getAdminOrder(id: string): Promise<OrderDetail | null> {
 
 export function getShippingRatesAdmin(): Promise<ShippingRate[]> {
   return apiFetch<ShippingRate[]>('/admin/shipping/rates');
+}
+
+export function getCategoriesAdmin(): Promise<AdminCategory[]> {
+  return apiFetch<AdminCategory[]>('/admin/categories');
 }
 
 export function getStoreSettings(): Promise<StoreSettings> {

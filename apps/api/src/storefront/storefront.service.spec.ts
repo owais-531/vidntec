@@ -100,6 +100,14 @@ describe('StorefrontService.list', () => {
     expect(items[0].primaryImageUrl).toBeNull();
   });
 
+  it('category filter is passed to the where clause as a slug relation filter', async () => {
+    ctx.prisma.product.findMany.mockResolvedValue([]);
+    await ctx.service.list(query({ category: 'desk-accessories' }));
+    expect(ctx.prisma.product.findMany.mock.calls[0][0].where).toMatchObject({
+      category: { slug: 'desk-accessories' },
+    });
+  });
+
   it('onSale filter narrows in the query and refines out false positives', async () => {
     ctx.prisma.product.findMany.mockResolvedValue([
       product({ id: 'a', variants: [{ price: 800, compareAtPrice: 1000, stock: 1, createdAt: now }] }),
@@ -131,6 +139,19 @@ describe('StorefrontService.getBySlug', () => {
     expect(res.discountPercent).toBe(20);
     expect(res.variants.find((v) => v.id === 'v1')).toMatchObject({ onSale: true, compareAtPrice: 1000 });
     expect(res.variants.find((v) => v.id === 'v2')).toMatchObject({ onSale: false, compareAtPrice: null });
+  });
+
+  it('exposes the assigned category, or null when unassigned', async () => {
+    const ctx = make();
+    ctx.prisma.product.findFirst.mockResolvedValueOnce(
+      product({ category: { name: 'Desk Accessories', slug: 'desk-accessories' } }),
+    );
+    const withCat = await ctx.service.getBySlug('t');
+    expect(withCat.category).toEqual({ name: 'Desk Accessories', slug: 'desk-accessories' });
+
+    ctx.prisma.product.findFirst.mockResolvedValueOnce(product());
+    const withoutCat = await ctx.service.getBySlug('t');
+    expect(withoutCat.category).toBeNull();
   });
 
   it('returns gallery media sorted by position with the image/video type preserved', async () => {

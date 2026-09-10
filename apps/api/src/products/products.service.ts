@@ -32,7 +32,7 @@ import {
 } from './products.mapper';
 import { sanitizeDescription } from './sanitize-description';
 
-const WITH_RELATIONS = { images: true, variants: true } as const;
+const WITH_RELATIONS = { images: true, variants: true, category: true } as const;
 
 @Injectable()
 export class ProductsService {
@@ -88,6 +88,7 @@ export class ProductsService {
   async create(input: CreateProductInput): Promise<AdminProduct> {
     const slug = await this.uniqueSlug(input.slug ?? slugify(input.title));
     this.assertUniqueSkus(input.variants.map((v) => v.sku));
+    await this.assertCategoryExists(input.categoryId);
 
     try {
       const product = await this.prisma.product.create({
@@ -97,6 +98,7 @@ export class ProductsService {
           description: sanitizeDescription(input.description),
           status: input.status,
           featured: input.featured ?? false,
+          ...(input.categoryId ? { category: { connect: { id: input.categoryId } } } : {}),
           variants: { create: input.variants },
         },
         include: WITH_RELATIONS,
@@ -109,10 +111,15 @@ export class ProductsService {
 
   async update(id: string, input: UpdateProductInput): Promise<AdminProduct> {
     await this.ensureExists(id);
-    const data: Prisma.ProductUpdateInput = { ...input };
+    const { categoryId, ...rest } = input;
+    const data: Prisma.ProductUpdateInput = { ...rest };
     if (input.slug) data.slug = await this.uniqueSlug(input.slug, id);
     if (data.description !== undefined) {
       data.description = sanitizeDescription(data.description as string);
+    }
+    if (categoryId !== undefined) {
+      await this.assertCategoryExists(categoryId);
+      data.category = categoryId ? { connect: { id: categoryId } } : { disconnect: true };
     }
 
     try {
@@ -286,6 +293,12 @@ export class ProductsService {
   private async ensureVariantExists(id: string): Promise<void> {
     const count = await this.prisma.variant.count({ where: { id } });
     if (!count) throw new NotFoundException('Variant not found');
+  }
+
+  private async assertCategoryExists(categoryId?: string | null): Promise<void> {
+    if (!categoryId) return;
+    const count = await this.prisma.category.count({ where: { id: categoryId } });
+    if (!count) throw new BadRequestException('Selected category no longer exists');
   }
 
   private assertUniqueSkus(skus: string[]): void {

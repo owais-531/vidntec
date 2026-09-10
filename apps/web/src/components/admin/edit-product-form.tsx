@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import { PRODUCT_STATUSES, type AdminProduct } from '@vidntec/shared';
+import { PRODUCT_STATUSES, type AdminCategory, type AdminProduct } from '@vidntec/shared';
 import { deleteProductAction, updateProductAction } from '@/lib/actions/catalog';
 import { Card, CardBody } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,13 @@ import { RichTextEditor } from '@/components/admin/rich-text-editor';
 import { ConfirmButton } from '@/components/ui/confirm-button';
 import { toast } from '@/components/ui/toast';
 
-export function EditProductForm({ product }: { product: AdminProduct }) {
+export function EditProductForm({
+  product,
+  categories,
+}: {
+  product: AdminProduct;
+  categories: AdminCategory[];
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
@@ -21,13 +27,15 @@ export function EditProductForm({ product }: { product: AdminProduct }) {
   const [description, setDescription] = useState(product.description);
   const [status, setStatus] = useState(product.status);
   const [featured, setFeatured] = useState(product.featured);
+  const [categoryId, setCategoryId] = useState(product.categoryId ?? '');
 
   const dirty =
     title !== product.title ||
     slug !== product.slug ||
     description !== product.description ||
     status !== product.status ||
-    featured !== product.featured;
+    featured !== product.featured ||
+    categoryId !== (product.categoryId ?? '');
 
   const save = () => {
     setFieldErrors({});
@@ -38,6 +46,7 @@ export function EditProductForm({ product }: { product: AdminProduct }) {
         description,
         status,
         featured,
+        categoryId: categoryId || null,
       });
       if (res.ok) toast('Saved');
       else setFieldErrors(res.fieldErrors ?? { _: [res.error] });
@@ -65,6 +74,24 @@ export function EditProductForm({ product }: { product: AdminProduct }) {
             {PRODUCT_STATUSES.map((s) => (
               <option key={s} value={s}>
                 {s[0]!.toUpperCase() + s.slice(1)}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field
+          label="Category"
+          htmlFor="category"
+          hint="Optional — uncategorized products still appear in All products and Latest."
+        >
+          <Select
+            id="category"
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+          >
+            <option value="">— No category —</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
               </option>
             ))}
           </Select>

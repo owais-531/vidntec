@@ -49,6 +49,7 @@ export class StorefrontService {
           }
         : {}),
       ...(query.featured ? { featured: true } : {}),
+      ...(query.category ? { category: { slug: query.category } } : {}),
       // `onSale` needs a compareAtPrice > price comparison Prisma can't express;
       // narrow cheaply here, then refine in JS below. Fine for this catalog size.
       ...(query.onSale ? { variants: { some: { compareAtPrice: { not: null } } } } : {}),
@@ -102,7 +103,7 @@ export class StorefrontService {
   async getBySlug(slug: string): Promise<PublicProduct> {
     const product = await this.prisma.product.findFirst({
       where: { slug, ...ACTIVE }, // draft products 404 for the public
-      include: { images: true, variants: true },
+      include: { images: true, variants: true, category: true },
     });
     if (!product) throw new NotFoundException('Product not found');
 
@@ -124,6 +125,9 @@ export class StorefrontService {
       slug: product.slug,
       description: product.description,
       featured: product.featured,
+      category: product.category
+        ? { name: product.category.name, slug: product.category.slug }
+        : null,
       images: [...product.images]
         .sort((a, b) => a.position - b.position)
         .map((i) => ({

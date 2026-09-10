@@ -10,6 +10,19 @@ export type ProductStatus = (typeof PRODUCT_STATUSES)[number];
 export const MEDIA_TYPES = ['image', 'video'] as const;
 export type MediaType = (typeof MEDIA_TYPES)[number];
 
+/** Default accent colour for a category tile (design-system sage green). */
+export const CATEGORY_DEFAULT_COLOR = '#dce9e2';
+
+/** Suggested tile colours offered in the category admin colour picker. */
+export const CATEGORY_TILE_COLORS = [
+  '#dce9e2', // sage
+  '#f4d7d8', // blush
+  '#e3e0f4', // lilac
+  '#fde9cf', // sand
+  '#d7ecf4', // sky
+  '#e8e4d9', // stone
+] as const;
+
 export const ORDER_STATUSES = [
   'pending',
   'confirmed',

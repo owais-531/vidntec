@@ -77,14 +77,24 @@ export default async function ProductDetailPage({
     },
   };
 
+  const crumbs = [
+    { name: 'Home', item: SITE_URL },
+    { name: 'Products', item: absoluteUrl('/products') },
+    ...(product.category
+      ? [{ name: product.category.name, item: absoluteUrl(`/categories/${product.category.slug}`) }]
+      : []),
+    { name: product.title, item: absoluteUrl(path) },
+  ];
+
   const breadcrumbJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
-    itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Home', item: SITE_URL },
-      { '@type': 'ListItem', position: 2, name: 'Products', item: absoluteUrl('/products') },
-      { '@type': 'ListItem', position: 3, name: product.title, item: absoluteUrl(path) },
-    ],
+    itemListElement: crumbs.map((c, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: c.name,
+      item: c.item,
+    })),
   };
 
   return (
@@ -94,6 +104,17 @@ export default async function ProductDetailPage({
         <Link href="/products" className="hover:text-ink">
           Products
         </Link>{' '}
+        {product.category ? (
+          <>
+            <span aria-hidden>/</span>{' '}
+            <Link
+              href={`/categories/${product.category.slug}`}
+              className="hover:text-ink"
+            >
+              {product.category.name}
+            </Link>{' '}
+          </>
+        ) : null}
         <span aria-hidden>/</span> <span className="text-ink-soft">{product.title}</span>
       </nav>
 

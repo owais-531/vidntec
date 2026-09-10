@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { centsSchema, slugSchema } from './common';
+import { publicProductCategorySchema } from './category';
 import { MEDIA_TYPES, PRODUCT_STATUSES } from '../constants';
 
 export const mediaTypeSchema = z.enum(MEDIA_TYPES);
@@ -19,6 +20,9 @@ export type VariantInput = z.infer<typeof variantInputSchema>;
 export const variantUpdateSchema = variantInputSchema.partial();
 export type VariantUpdate = z.infer<typeof variantUpdateSchema>;
 
+/** Category assignment: a cuid to assign, `null` to clear, omitted to leave unchanged. */
+const categoryIdSchema = z.string().cuid().nullable().optional();
+
 export const createProductSchema = z.object({
   title: z.string().min(1).max(200),
   // optional — server slugifies the title when omitted
@@ -26,6 +30,7 @@ export const createProductSchema = z.object({
   description: z.string().max(20_000).default(''),
   status: z.enum(PRODUCT_STATUSES).default('draft'),
   featured: z.boolean().optional(),
+  categoryId: categoryIdSchema,
   variants: z.array(variantInputSchema).min(1, 'a product needs at least one variant'),
 });
 export type CreateProductInput = z.infer<typeof createProductSchema>;
@@ -36,6 +41,7 @@ export const updateProductSchema = z.object({
   description: z.string().max(20_000).optional(),
   status: z.enum(PRODUCT_STATUSES).optional(),
   featured: z.boolean().optional(),
+  categoryId: categoryIdSchema,
 });
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;
 
@@ -109,6 +115,8 @@ export const adminProductSchema = z.object({
   description: z.string(),
   status: z.enum(PRODUCT_STATUSES),
   featured: z.boolean(),
+  categoryId: z.string().nullable(),
+  categoryName: z.string().nullable(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
   images: z.array(productImageSchema),
@@ -122,6 +130,7 @@ export const adminProductListItemSchema = z.object({
   slug: z.string(),
   status: z.enum(PRODUCT_STATUSES),
   featured: z.boolean(),
+  categoryName: z.string().nullable(),
   primaryImageUrl: z.string().url().nullable(),
   variantCount: z.number().int(),
   totalStock: z.number().int(),
@@ -170,6 +179,8 @@ const boolParam = z
 
 export const storefrontListQuerySchema = z.object({
   q: z.string().max(200).trim().optional(),
+  /** Filter to one category by its slug. */
+  category: z.string().max(200).trim().optional(),
   sort: z.enum(['newest', 'price-asc', 'price-desc', 'title']).default('newest'),
   featured: boolParam,
   onSale: boolParam,
@@ -209,6 +220,7 @@ export const publicProductSchema = z.object({
   slug: z.string(),
   description: z.string(),
   featured: z.boolean(),
+  category: publicProductCategorySchema.nullable(),
   images: z.array(
     z.object({ url: z.string().url(), position: z.number().int(), type: mediaTypeSchema }),
   ),

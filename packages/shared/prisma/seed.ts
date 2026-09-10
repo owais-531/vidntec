@@ -66,12 +66,27 @@ async function main() {
     ],
   });
 
-  // 5. Sample products + variants + images
+  // 5. Categories (optional on products; storefront "Shop by category")
+  const categories: Array<{ name: string; slug: string; color: string; emoji: string }> = [
+    { name: 'Desk Accessories', slug: 'desk-accessories', color: '#dce9e2', emoji: '🗄️' },
+    { name: 'Planters & Pots', slug: 'planters-and-pots', color: '#e8e4d9', emoji: '🪴' },
+    { name: 'Toys & Fidgets', slug: 'toys-and-fidgets', color: '#f4d7d8', emoji: '🐉' },
+  ];
+  for (const [i, c] of categories.entries()) {
+    await prisma.category.upsert({
+      where: { slug: c.slug },
+      update: { name: c.name, color: c.color, emoji: c.emoji },
+      create: { name: c.name, slug: c.slug, color: c.color, emoji: c.emoji, position: i },
+    });
+  }
+
+  // 6. Sample products + variants + images
   const products: Array<{
     title: string;
     slug: string;
     description: string;
     featured?: boolean;
+    categorySlug?: string;
     images: string[];
     variants: Prisma.VariantCreateWithoutProductInput[];
   }> = [
@@ -79,6 +94,7 @@ async function main() {
       title: 'Hexagonal Desk Organizer',
       slug: 'hexagonal-desk-organizer',
       description: 'A modular 3D-printed desk organizer with a honeycomb footprint.',
+      categorySlug: 'desk-accessories',
       images: [
         'https://images.unsplash.com/photo-1751107807635-a2ac6035e8dd?w=1200&q=70&auto=format&fit=crop',
       ],
@@ -94,6 +110,7 @@ async function main() {
       slug: 'articulated-desk-dragon',
       description: 'Fully articulated print-in-place dragon. No supports, all fidget.',
       featured: true,
+      categorySlug: 'toys-and-fidgets',
       images: [
         'https://images.unsplash.com/photo-1627874458807-1ea486b9cbb2?w=1200&q=70&auto=format&fit=crop',
         'https://images.unsplash.com/photo-1674053965701-bb1e48bed3de?w=1200&q=70&auto=format&fit=crop',
@@ -109,6 +126,7 @@ async function main() {
       slug: 'low-poly-planter',
       description: 'Faceted self-watering planter for succulents and small herbs.',
       featured: true,
+      categorySlug: 'planters-and-pots',
       images: [
         'https://images.unsplash.com/photo-1775736300402-320bc6f26845?w=1200&q=70&auto=format&fit=crop',
         'https://images.unsplash.com/photo-1572198103081-3ec186228dd4?w=1200&q=70&auto=format&fit=crop',
@@ -121,15 +139,17 @@ async function main() {
   ];
 
   for (const p of products) {
+    const category = p.categorySlug ? { connect: { slug: p.categorySlug } } : undefined;
     await prisma.product.upsert({
       where: { slug: p.slug },
-      update: {},
+      update: { ...(category ? { category } : {}) },
       create: {
         title: p.title,
         slug: p.slug,
         description: p.description,
         status: 'active',
         featured: p.featured ?? false,
+        ...(category ? { category } : {}),
         images: {
           create: p.images.map((url, i) => ({ url, position: i })),
         },

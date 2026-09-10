@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import { PRODUCT_STATUSES, type CreateProductInput } from '@vidntec/shared';
+import { PRODUCT_STATUSES, type AdminCategory, type CreateProductInput } from '@vidntec/shared';
 import { createProductAction } from '@/lib/actions/catalog';
 import { inputToCents } from '@/lib/money-input';
 import { Card, CardBody } from '@/components/ui/card';
@@ -23,7 +23,7 @@ const emptyRow = (): VariantRow => ({ name: '', price: '', compareAt: '', sku: '
 
 const VGRID = 'grid grid-cols-[1fr_6.5rem_6.5rem_1fr_4.5rem_auto] items-center gap-2';
 
-export function NewProductForm() {
+export function NewProductForm({ categories }: { categories: AdminCategory[] }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string>();
@@ -34,6 +34,7 @@ export function NewProductForm() {
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<'draft' | 'active'>('draft');
   const [featured, setFeatured] = useState(false);
+  const [categoryId, setCategoryId] = useState('');
   const [rows, setRows] = useState<VariantRow[]>([emptyRow()]);
 
   const setRow = (i: number, patch: Partial<VariantRow>) =>
@@ -73,6 +74,7 @@ export function NewProductForm() {
       description: description.trim(),
       status,
       featured,
+      categoryId: categoryId || null,
       variants,
       ...(slug.trim() ? { slug: slug.trim() } : {}),
     };
@@ -121,6 +123,24 @@ export function NewProductForm() {
               {PRODUCT_STATUSES.map((s) => (
                 <option key={s} value={s}>
                   {s[0]!.toUpperCase() + s.slice(1)}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field
+            label="Category"
+            htmlFor="category"
+            hint="Optional — uncategorized products still appear in All products and Latest."
+          >
+            <Select
+              id="category"
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
+            >
+              <option value="">— No category —</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
                 </option>
               ))}
             </Select>

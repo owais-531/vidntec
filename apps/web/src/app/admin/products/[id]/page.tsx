@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getProduct } from '@/lib/admin/queries';
+import { getCategoriesAdmin, getProduct } from '@/lib/admin/queries';
 import { PageHeader } from '@/components/admin/page-header';
 import { EditProductForm } from '@/components/admin/edit-product-form';
 import { VariantsEditor } from '@/components/admin/variants-editor';
@@ -24,7 +24,7 @@ export default async function ProductEditPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const product = await getProduct(id);
+  const [product, categories] = await Promise.all([getProduct(id), getCategoriesAdmin()]);
   if (!product) notFound();
 
   return (
@@ -43,7 +43,7 @@ export default async function ProductEditPage({
       />
 
       <div className="space-y-5">
-        <EditProductForm product={product} />
+        <EditProductForm product={product} categories={categories} />
         <VariantsEditor productId={product.id} variants={product.variants} />
         <ImageManager productId={product.id} images={product.images} />
       </div>

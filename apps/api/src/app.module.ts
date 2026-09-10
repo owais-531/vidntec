@@ -9,6 +9,7 @@ import { CloudinaryModule } from './cloudinary/cloudinary.module';
 import { HealthModule } from './health/health.module';
 import { AuthModule } from './auth/auth.module';
 import { ProductsModule } from './products/products.module';
+import { CategoriesModule } from './categories/categories.module';
 import { StorefrontModule } from './storefront/storefront.module';
 import { CartModule } from './cart/cart.module';
 import { StripeModule } from './stripe/stripe.module';
@@ -32,6 +33,7 @@ import { AllExceptionsFilter } from './common/all-exceptions.filter';
     StripeModule,
     SettingsModule,
     ProductsModule,
+    CategoriesModule,
     StorefrontModule,
     CartModule,
     ShippingModule,

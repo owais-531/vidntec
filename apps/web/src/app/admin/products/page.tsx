@@ -59,6 +59,7 @@ export default async function ProductsPage({
             <tr className="border-b border-paper-line text-left text-xs font-medium uppercase tracking-wide text-ink-muted">
               <th className="w-14 px-4 py-3" />
               <th className="px-4 py-3">Title</th>
+              <th className="px-4 py-3">Category</th>
               <th className="px-4 py-3">Variants</th>
               <th className="px-4 py-3">Stock</th>
               <th className="px-4 py-3">Price</th>
@@ -68,7 +69,7 @@ export default async function ProductsPage({
           <tbody>
             {items.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-sm text-ink-muted">
+                <td colSpan={7} className="px-4 py-10 text-center text-sm text-ink-muted">
                   No products found.
                 </td>
               </tr>
@@ -100,6 +101,7 @@ export default async function ProductsPage({
                     </Link>
                     <div className="text-xs text-ink-faint">/{p.slug}</div>
                   </td>
+                  <td className="px-4 py-3 text-ink-soft">{p.categoryName ?? '—'}</td>
                   <td className="px-4 py-3 text-ink-soft">{p.variantCount}</td>
                   <td className="px-4 py-3 text-ink-soft">{p.totalStock}</td>
                   <td className="px-4 py-3 font-medium text-brand-600">

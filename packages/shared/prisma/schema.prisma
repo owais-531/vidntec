@@ -107,6 +107,24 @@ model RefreshToken {
   @@map("refresh_tokens")
 }
 
+// Storefront browse category. Optional on a product — an unassigned product
+// still appears in "All products" / "Latest", just not on a category page.
+model Category {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  color     String   @default("#dce9e2") // storefront tile accent colour
+  emoji     String? // optional tile icon
+  position  Int      @default(0) // manual display order (admin-controlled)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  products Product[]
+
+  @@index([position])
+  @@map("categories")
+}
+
 model Product {
   id          String        @id @default(cuid())
   title       String
@@ -114,14 +132,17 @@ model Product {
   description String        @default("")
   status      ProductStatus @default(draft)
   featured    Boolean       @default(false) // shown in the storefront "Trending" section
+  categoryId  String? // optional; SET NULL on category delete so the product survives
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
+  category Category?      @relation(fields: [categoryId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   images   ProductImage[]
   variants Variant[]
 
   @@index([status])
   @@index([featured])
+  @@index([categoryId])
   @@map("products")
 }
 

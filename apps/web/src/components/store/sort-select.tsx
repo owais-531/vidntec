@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 const OPTIONS = [
   { value: 'newest', label: 'Newest' },
@@ -12,6 +12,7 @@ const OPTIONS = [
 export function SortSelect() {
   const router = useRouter();
   const params = useSearchParams();
+  const pathname = usePathname();
 
   return (
     <label className="flex items-center gap-2 text-xs text-ink-muted">
@@ -22,7 +23,7 @@ export function SortSelect() {
           const usp = new URLSearchParams(params.toString());
           usp.set('sort', e.target.value);
           usp.delete('page');
-          router.push(`/products?${usp.toString()}`);
+          router.push(`${pathname}?${usp.toString()}`);
         }}
         className="rounded-card border border-paper-line bg-white px-2 py-1.5 text-xs text-ink focus:border-brand-400 focus:outline-none"
       >

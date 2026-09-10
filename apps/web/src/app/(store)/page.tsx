@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { listStorefrontProducts } from '@/lib/storefront/queries';
+import { listStorefrontCategories, listStorefrontProducts } from '@/lib/storefront/queries';
 import { SectionHeading } from '@/components/store/section-heading';
 import { ProductGrid } from '@/components/store/product-grid';
+import { CategoryGrid } from '@/components/store/category-grid';
 import { JsonLd } from '@/components/seo/json-ld';
 import { buttonClasses } from '@/components/ui/button';
 import { SITE_URL, siteConfig } from '@/lib/site';
@@ -35,10 +36,11 @@ const websiteJsonLd = {
 };
 
 export default async function HomePage() {
-  const [latest, trending, onSale] = await Promise.all([
+  const [latest, trending, onSale, categories] = await Promise.all([
     listStorefrontProducts({ sort: 'newest', pageSize: 10 }),
     listStorefrontProducts({ featured: true, pageSize: 10 }),
     listStorefrontProducts({ onSale: true, pageSize: 10 }),
+    listStorefrontCategories(),
   ]);
   const { items, total } = latest;
 
@@ -63,6 +65,17 @@ export default async function HomePage() {
           Shop the catalog
         </Link>
       </section>
+
+      {categories.length > 0 ? (
+        <section>
+          <SectionHeading
+            title="Shop by category"
+            href="/categories"
+            linkLabel="All categories"
+          />
+          <CategoryGrid categories={categories} />
+        </section>
+      ) : null}
 
       <section>
         <SectionHeading

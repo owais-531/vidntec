@@ -3,6 +3,7 @@ import { Suspense } from 'react';
 import { Logo } from '@/components/ui/logo';
 import { SearchForm } from './search-form';
 import { SignOutButton } from './sign-out-button';
+import { CategorySidebarToggle } from './category-sidebar';
 
 export function SiteHeader({
   cartCount = 0,
@@ -32,36 +33,39 @@ export function SiteHeader({
 
       {/* main bar */}
       <div className="bg-brand-500 text-white">
-        <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-3.5">
-          <Link href="/" className="flex shrink-0 items-center">
-            <Logo onDark priority className="h-6 sm:h-7" />
-          </Link>
+        <div className="relative">
+          <CategorySidebarToggle className="absolute left-3 top-1/2 z-10 -translate-y-1/2 sm:left-4" />
+          <div className="mx-auto flex max-w-6xl items-center gap-4 py-3.5 pl-14 pr-4 sm:pl-16 xl:px-4">
+            <Link href="/" className="flex shrink-0 items-center">
+              <Logo onDark className="text-2xl sm:text-3xl" />
+            </Link>
 
-          <div className="hidden flex-1 md:flex">
-            <Suspense fallback={<div className="h-10 flex-1 rounded-card bg-white/20" />}>
-              <SearchForm />
-            </Suspense>
+            <div className="hidden flex-1 md:flex">
+              <Suspense fallback={<div className="h-10 flex-1 rounded-card bg-white/20" />}>
+                <SearchForm />
+              </Suspense>
+            </div>
+
+            <nav className="ml-auto flex items-center gap-5 text-sm">
+              <Link
+                href={authed ? '/account/orders' : '/login'}
+                className="flex items-center gap-1.5 hover:opacity-90"
+              >
+                <span aria-hidden>👤</span>
+                <span className="hidden sm:inline">{authed ? 'Orders' : 'Account'}</span>
+              </Link>
+              {authed ? <SignOutButton /> : null}
+              <Link href="/cart" className="flex items-center gap-1.5 hover:opacity-90">
+                <span aria-hidden>🛒</span>
+                <span className="hidden sm:inline">Cart</span>
+                {cartCount > 0 ? (
+                  <span className="rounded-full bg-white px-1.5 text-xs font-bold text-brand-600">
+                    {cartCount}
+                  </span>
+                ) : null}
+              </Link>
+            </nav>
           </div>
-
-          <nav className="ml-auto flex items-center gap-5 text-sm">
-            <Link
-              href={authed ? '/account/orders' : '/login'}
-              className="flex items-center gap-1.5 hover:opacity-90"
-            >
-              <span aria-hidden>👤</span>
-              <span className="hidden sm:inline">{authed ? 'Orders' : 'Account'}</span>
-            </Link>
-            {authed ? <SignOutButton /> : null}
-            <Link href="/cart" className="flex items-center gap-1.5 hover:opacity-90">
-              <span aria-hidden>🛒</span>
-              <span className="hidden sm:inline">Cart</span>
-              {cartCount > 0 ? (
-                <span className="rounded-full bg-white px-1.5 text-xs font-bold text-brand-600">
-                  {cartCount}
-                </span>
-              ) : null}
-            </Link>
-          </nav>
         </div>
 
         {/* mobile search */}

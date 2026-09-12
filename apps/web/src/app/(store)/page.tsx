@@ -1,9 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { listStorefrontCategories, listStorefrontProducts } from '@/lib/storefront/queries';
+import { listStorefrontProducts } from '@/lib/storefront/queries';
 import { SectionHeading } from '@/components/store/section-heading';
 import { ProductGrid } from '@/components/store/product-grid';
-import { CategoryGrid } from '@/components/store/category-grid';
 import { JsonLd } from '@/components/seo/json-ld';
 import { buttonClasses } from '@/components/ui/button';
 import { SITE_URL, siteConfig } from '@/lib/site';
@@ -36,18 +35,17 @@ const websiteJsonLd = {
 };
 
 export default async function HomePage() {
-  const [latest, trending, onSale, categories] = await Promise.all([
+  const [latest, trending, onSale] = await Promise.all([
     listStorefrontProducts({ sort: 'newest', pageSize: 10 }),
     listStorefrontProducts({ featured: true, pageSize: 10 }),
     listStorefrontProducts({ onSale: true, pageSize: 10 }),
-    listStorefrontCategories(),
   ]);
   const { items, total } = latest;
 
   return (
     <div className="space-y-10">
       <JsonLd data={[orgJsonLd, websiteJsonLd]} />
-      <section className="overflow-hidden rounded-card bg-gradient-to-br from-brand-500 to-brand-700 px-8 py-12 text-white sm:px-12 sm:py-16">
+      <section className="overflow-hidden rounded-card bg-brand-500 px-8 py-12 text-white sm:px-12 sm:py-16">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/70">
           Made to order
         </p>
@@ -66,32 +64,21 @@ export default async function HomePage() {
         </Link>
       </section>
 
-      {categories.length > 0 ? (
-        <section>
-          <SectionHeading
-            title="Shop by category"
-            href="/categories"
-            linkLabel="All categories"
-          />
-          <CategoryGrid categories={categories} />
-        </section>
-      ) : null}
-
-      <section>
-        <SectionHeading
-          title="Latest products"
-          href="/products"
-          linkLabel={`All ${total} products`}
-        />
-        <ProductGrid products={items} />
-      </section>
-
       {trending.items.length > 0 ? (
         <section>
           <SectionHeading title="Trending" href="/products" linkLabel="Shop all" />
           <ProductGrid products={trending.items} />
         </section>
       ) : null}
+
+      <section>
+        <SectionHeading
+          title="Products catalog"
+          href="/products"
+          linkLabel={`All ${total} products`}
+        />
+        <ProductGrid products={items} />
+      </section>
 
       {onSale.items.length > 0 ? (
         <section>

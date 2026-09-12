@@ -13,20 +13,12 @@ export function SiteFooter() {
             info@vidntec.com
           </a>
           <a
-            href="https://wa.me/923319869464"
+            href="https://wa.me/923175791001"
             target="_blank"
             rel="noopener noreferrer"
             className="hover:text-ink"
           >
-            +92 331 9869464
-          </a>
-          <a
-            href="https://wa.me/923027828356"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-ink"
-          >
-            +92 302 7828356
+            +92 317 5791001
           </a>
         </div>
       </div>

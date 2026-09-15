@@ -2,12 +2,13 @@
 
 import Image from 'next/image';
 import { useRef, useState, useTransition } from 'react';
-import type { ProductImageDto } from '@vidntec/shared';
+import type { AdminVariant, ProductImageDto } from '@vidntec/shared';
 import {
   attachImageAction,
   deleteImageAction,
   getUploadSignatureAction,
   reorderImagesAction,
+  setImageVariantAction,
 } from '@/lib/actions/catalog';
 import { Card, CardBody } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,14 +20,26 @@ const MAX_VIDEO_BYTES = 100 * 1024 * 1024; // Cloudinary free-plan per-file vide
 export function ImageManager({
   productId,
   images,
+  variants = [],
 }: {
   productId: string;
   images: ProductImageDto[];
+  variants?: AdminVariant[];
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [pending, start] = useTransition();
   const ordered = [...images].sort((a, b) => a.position - b.position);
+  // Not worth assigning a variant when there's only one — every image would
+  // just point at the same one.
+  const showVariantAssignment = variants.length > 1;
+
+  const assignVariant = (imageId: string, variantId: string) => {
+    start(async () => {
+      const res = await setImageVariantAction(productId, imageId, variantId || null);
+      if (!res.ok) toast(res.error, 'error');
+    });
+  };
 
   const onFiles = async (files: FileList | null) => {
     if (!files?.length) return;
@@ -123,64 +136,79 @@ export function ImageManager({
         ) : (
           <div className="grid grid-cols-4 gap-3">
             {ordered.map((img, i) => (
-              <div
-                key={img.id}
-                className="group relative overflow-hidden rounded-card border border-paper-line bg-paper-sunken"
-              >
-                <Image
-                  src={img.type === 'video' ? posterUrl(img.url) : img.url}
-                  alt=""
-                  width={200}
-                  height={200}
-                  className="aspect-square w-full object-cover"
-                />
-                {img.type === 'video' ? (
-                  <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-black/55 text-xs text-white">
-                      ▶
+              <div key={img.id} className="space-y-1">
+                <div className="group relative overflow-hidden rounded-card border border-paper-line bg-paper-sunken">
+                  <Image
+                    src={img.type === 'video' ? posterUrl(img.url) : img.url}
+                    alt=""
+                    width={200}
+                    height={200}
+                    className="aspect-square w-full object-cover"
+                  />
+                  {img.type === 'video' ? (
+                    <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-black/55 text-xs text-white">
+                        ▶
+                      </span>
                     </span>
-                  </span>
-                ) : null}
-                {i === 0 && img.type !== 'video' ? (
-                  <span className="absolute left-1 top-1 rounded bg-brand-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                    Primary
-                  </span>
-                ) : null}
-                <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-black/50 px-1.5 py-1 opacity-0 transition-opacity group-hover:opacity-100">
-                  <div className="flex gap-1">
+                  ) : null}
+                  {i === 0 && img.type !== 'video' ? (
+                    <span className="absolute left-1 top-1 rounded bg-brand-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                      Primary
+                    </span>
+                  ) : null}
+                  <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-black/50 px-1.5 py-1 opacity-0 transition-opacity group-hover:opacity-100">
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        disabled={pending || i === 0}
+                        onClick={() => move(i, -1)}
+                        className="text-white disabled:opacity-30"
+                        aria-label="Move left"
+                      >
+                        ←
+                      </button>
+                      <button
+                        type="button"
+                        disabled={pending || i === ordered.length - 1}
+                        onClick={() => move(i, 1)}
+                        className="text-white disabled:opacity-30"
+                        aria-label="Move right"
+                      >
+                        →
+                      </button>
+                    </div>
                     <button
                       type="button"
-                      disabled={pending || i === 0}
-                      onClick={() => move(i, -1)}
-                      className="text-white disabled:opacity-30"
-                      aria-label="Move left"
+                      onClick={() =>
+                        start(async () => {
+                          const res = await deleteImageAction(productId, img.id);
+                          if (!res.ok) toast(res.error, 'error');
+                        })
+                      }
+                      className="text-white"
+                      aria-label="Delete image"
                     >
-                      ←
-                    </button>
-                    <button
-                      type="button"
-                      disabled={pending || i === ordered.length - 1}
-                      onClick={() => move(i, 1)}
-                      className="text-white disabled:opacity-30"
-                      aria-label="Move right"
-                    >
-                      →
+                      🗑
                     </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      start(async () => {
-                        const res = await deleteImageAction(productId, img.id);
-                        if (!res.ok) toast(res.error, 'error');
-                      })
-                    }
-                    className="text-white"
-                    aria-label="Delete image"
-                  >
-                    🗑
-                  </button>
                 </div>
+                {showVariantAssignment ? (
+                  <select
+                    value={img.variantId ?? ''}
+                    disabled={pending}
+                    onChange={(e) => assignVariant(img.id, e.target.value)}
+                    className="w-full rounded border border-paper-line bg-white px-1 py-1 text-[11px] text-ink-soft disabled:opacity-50"
+                    aria-label="Assign to variant"
+                  >
+                    <option value="">All variants</option>
+                    {variants.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : null}
               </div>
             ))}
           </div>

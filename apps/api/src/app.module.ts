@@ -18,6 +18,7 @@ import { ShippingModule } from './shipping/shipping.module';
 import { CheckoutModule } from './checkout/checkout.module';
 import { WebhooksModule } from './webhooks/webhooks.module';
 import { OrdersModule } from './orders/orders.module';
+import { ReviewsModule } from './reviews/reviews.module';
 import { AllExceptionsFilter } from './common/all-exceptions.filter';
 
 @Module({
@@ -40,6 +41,7 @@ import { AllExceptionsFilter } from './common/all-exceptions.filter';
     CheckoutModule,
     WebhooksModule,
     OrdersModule,
+    ReviewsModule,
     // Feature modules land here per milestone:
     // admin Shipping/Settings CRUD (M8)
   ],

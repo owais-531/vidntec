@@ -20,14 +20,20 @@ function revalidateCartViews(): void {
   revalidatePath('/', 'layout'); // header badge
 }
 
+export interface AddToCartPersonalization {
+  customName?: string;
+  customColorLabel?: string;
+}
+
 export async function addToCartAction(
   variantId: string,
   quantity = 1,
+  personalization: AddToCartPersonalization = {},
 ): Promise<ActionResult<CartView>> {
   const res = await runAction(async () => {
     const { data, setCookies } = await apiCall<CartView>('/cart/items', {
       method: 'POST',
-      body: JSON.stringify({ variantId, quantity }),
+      body: JSON.stringify({ variantId, quantity, ...personalization }),
     });
     await relayCartCookie(setCookies);
     return data;
@@ -37,12 +43,12 @@ export async function addToCartAction(
 }
 
 export async function updateCartLineAction(
-  variantId: string,
+  itemId: string,
   quantity: number,
 ): Promise<ActionResult<CartView>> {
   const res = await runAction(async () => {
     const { data, setCookies } = await apiCall<CartView>(
-      `/cart/items/${encodeURIComponent(variantId)}`,
+      `/cart/items/${encodeURIComponent(itemId)}`,
       { method: 'PATCH', body: JSON.stringify({ quantity }) },
     );
     await relayCartCookie(setCookies);
@@ -52,10 +58,10 @@ export async function updateCartLineAction(
   return res;
 }
 
-export async function removeCartLineAction(variantId: string): Promise<ActionResult<CartView>> {
+export async function removeCartLineAction(itemId: string): Promise<ActionResult<CartView>> {
   const res = await runAction(async () => {
     const { data, setCookies } = await apiCall<CartView>(
-      `/cart/items/${encodeURIComponent(variantId)}`,
+      `/cart/items/${encodeURIComponent(itemId)}`,
       { method: 'DELETE' },
     );
     await relayCartCookie(setCookies);

@@ -57,5 +57,24 @@ export const JWT_AUDIENCE = 'vidntec-app';
 
 export const MAX_CART_ITEM_QUANTITY = 99;
 
+/** Max characters for a customer's personalized text/name on a customizable product. */
+export const CUSTOMIZATION_NAME_MAX_LENGTH = 40;
+
+/** Max admin-defined text-color options for a customizable product. */
+export const CUSTOMIZATION_MAX_COLOR_OPTIONS = 4;
+
 /** Variants at or below this stock level are flagged in the admin inventory view. */
 export const LOW_STOCK_THRESHOLD = 5;
+
+/** Max characters for a product review's comment text. */
+export const REVIEW_COMMENT_MAX_LENGTH = 1000;
+
+/** Max characters for the free-text reviewer name captured on the review form. */
+export const REVIEW_AUTHOR_NAME_MAX_LENGTH = 60;
+
+/** Max photos a customer can attach to one review. */
+export const REVIEW_MAX_IMAGES = 4;
+
+/** Max size (bytes) for one review photo — smaller than the admin product-video
+ *  cap since these are customer phone photos, not admin-curated clips. */
+export const REVIEW_MAX_IMAGE_BYTES = 8 * 1024 * 1024;

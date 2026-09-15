@@ -55,6 +55,7 @@ model User {
   emailOtps           EmailOtp[]
   carts               Cart[]
   orders              Order[]
+  reviews             Review[]
 
   @@map("users")
 }
@@ -99,8 +100,8 @@ model RefreshToken {
   createdAt    DateTime @default(now())
 
   user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  replacedBy RefreshToken?  @relation("TokenRotation", fields: [replacedById], references: [id], onDelete: SetNull)
-  replaces   RefreshToken?  @relation("TokenRotation")
+  replacedBy RefreshToken? @relation("TokenRotation", fields: [replacedById], references: [id], onDelete: SetNull)
+  replaces   RefreshToken? @relation("TokenRotation")
 
   @@index([userId])
   @@index([expiresAt])
@@ -126,19 +127,26 @@ model Category {
 }
 
 model Product {
-  id          String        @id @default(cuid())
-  title       String
-  slug        String        @unique
-  description String        @default("")
-  status      ProductStatus @default(draft)
-  featured    Boolean       @default(false) // shown in the storefront "Trending" section
-  categoryId  String? // optional; SET NULL on category delete so the product survives
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id                        String        @id @default(cuid())
+  title                     String
+  slug                      String        @unique
+  description               String        @default("")
+  status                    ProductStatus @default(draft)
+  featured                  Boolean       @default(false) // shown in the storefront "Trending" section
+  categoryId                String? // optional; SET NULL on category delete so the product survives
+  // Customer-entered personalization: the printed text and/or its color.
+  // Unrelated to Variant, which models the product's own finish/size/etc.
+  customizationNameEnabled  Boolean       @default(false)
+  customizationColorEnabled Boolean       @default(false)
+  // [{ label: string, hex: "#rrggbb" }], max 4 — enforced by Zod, not the DB
+  customizationColorOptions Json          @default("[]")
+  createdAt                 DateTime      @default(now())
+  updatedAt                 DateTime      @updatedAt
 
   category Category?      @relation(fields: [categoryId], references: [id], onDelete: SetNull, onUpdate: Cascade)
   images   ProductImage[]
   variants Variant[]
+  reviews  Review[]
 
   @@index([status])
   @@index([featured])
@@ -146,34 +154,75 @@ model Product {
   @@map("products")
 }
 
+// A signed-in customer's rating and/or comment on a product. One review per
+// product per customer — resubmitting replaces it (upsert on the unique pair
+// below), it does not create a second row.
+model Review {
+  id         String   @id @default(cuid())
+  productId  String
+  userId     String
+  authorName String // free text captured on the form — User has no name field
+  rating     Int? // 1-5; a review can be comment-only
+  comment    String? // a review can be rating-only
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  product Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  images  ReviewImage[]
+
+  @@unique([productId, userId])
+  @@index([productId])
+  @@map("reviews")
+}
+
+model ReviewImage {
+  id       String  @id @default(cuid())
+  reviewId String
+  url      String
+  publicId String?
+  position Int     @default(0)
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@index([reviewId])
+  @@map("review_images")
+}
+
 model ProductImage {
-  id        String @id @default(cuid())
+  id        String  @id @default(cuid())
   productId String
   url       String
   // Cloudinary public_id, kept so admin can delete/transform the asset
   publicId  String?
-  position  Int    @default(0)
+  position  Int     @default(0)
   // "image" | "video" — a video is played inline in the storefront gallery
-  type      String @default("image")
+  type      String  @default("image")
+  // Optional: ties this image to one variant (e.g. a color) so the storefront
+  // can switch to it when that variant is selected. null = shown for all variants.
+  variantId String?
 
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant Variant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
 
   @@index([productId])
+  @@index([variantId])
   @@map("product_images")
 }
 
 model Variant {
-  id             String  @id @default(cuid())
+  id             String   @id @default(cuid())
   productId      String
   name           String
   price          Int // integer minor units (PKR paisa)
   compareAtPrice Int? // optional "was" price; on sale when compareAtPrice > price
-  sku            String  @unique
-  stock          Int     @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  sku            String   @unique
+  stock          Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product    Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  images     ProductImage[]
   cartItems  CartItem[]
   orderItems OrderItem[]
 
@@ -195,16 +244,20 @@ model Cart {
 }
 
 model CartItem {
-  id        String @id @default(cuid())
-  cartId    String
-  variantId String
-  quantity  Int
+  id               String  @id @default(cuid())
+  cartId           String
+  variantId        String
+  quantity         Int
+  // Personalization for this line — two lines for the same variant can
+  // coexist when these differ (e.g. two different printed names).
+  customName       String?
+  customColorLabel String?
+  customColorHex   String?
 
   cart    Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
   variant Variant @relation(fields: [variantId], references: [id], onDelete: Cascade)
 
-  @@unique([cartId, variantId])
-  @@index([cartId])
+  @@index([cartId, variantId])
   @@map("cart_items")
 }
 
@@ -236,14 +289,17 @@ model Order {
 }
 
 model OrderItem {
-  id            String  @id @default(cuid())
-  orderId       String
+  id                       String  @id @default(cuid())
+  orderId                  String
   // kept as a soft link; nulled if the variant is later deleted.
   // The *Snapshot fields are the source of truth for historical orders.
-  variantId     String?
-  titleSnapshot String
-  priceSnapshot Int // integer cents at time of order
-  quantity      Int
+  variantId                String?
+  titleSnapshot            String
+  priceSnapshot            Int // integer cents at time of order
+  quantity                 Int
+  customNameSnapshot       String?
+  customColorLabelSnapshot String?
+  customColorHexSnapshot   String?
 
   order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   variant Variant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
@@ -306,14 +362,14 @@ model PendingCheckout {
 
 // Single-row store configuration. Seam for swapping in Stripe Tax later.
 model StoreSettings {
-  id                Int      @id @default(1)
-  taxEnabled        Boolean  @default(false)
-  taxRateBps        Int      @default(0) // basis points: 875 = 8.75%
-  taxLabel          String   @default("Tax")
-  currency          String   @default("pkr")
-  storeName         String   @default("VIDNTEC")
-  supportEmail      String   @default("")
-  updatedAt         DateTime @updatedAt
+  id           Int      @id @default(1)
+  taxEnabled   Boolean  @default(false)
+  taxRateBps   Int      @default(0) // basis points: 875 = 8.75%
+  taxLabel     String   @default("Tax")
+  currency     String   @default("pkr")
+  storeName    String   @default("VIDNTEC")
+  supportEmail String   @default("")
+  updatedAt    DateTime @updatedAt
 
   @@map("store_settings")
 }

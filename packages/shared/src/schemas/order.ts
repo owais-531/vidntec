@@ -9,6 +9,9 @@ export const orderItemSchema = z.object({
   priceSnapshot: z.number().int(),
   quantity: z.number().int(),
   lineTotal: z.number().int(),
+  customNameSnapshot: z.string().nullable(),
+  customColorLabelSnapshot: z.string().nullable(),
+  customColorHexSnapshot: z.string().nullable(),
 });
 export type OrderItemDto = z.infer<typeof orderItemSchema>;
 

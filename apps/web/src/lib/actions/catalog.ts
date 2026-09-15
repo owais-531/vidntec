@@ -165,3 +165,19 @@ export async function deleteImageAction(
   if (res.ok) bump(`/admin/products/${productId}`, '/admin/products');
   return res;
 }
+
+export async function setImageVariantAction(
+  productId: string,
+  imageId: string,
+  variantId: string | null,
+): Promise<ActionResult<ProductImageDto>> {
+  await requireAdmin();
+  const res = await runAction(() =>
+    apiFetch<ProductImageDto>(`/admin/products/${productId}/images/${imageId}/variant`, {
+      method: 'PATCH',
+      body: JSON.stringify({ variantId }),
+    }),
+  );
+  if (res.ok) bump(`/admin/products/${productId}`, '/admin/products');
+  return res;
+}

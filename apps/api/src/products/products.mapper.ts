@@ -2,6 +2,7 @@ import type {
   AdminProduct,
   AdminProductListItem,
   AdminVariant,
+  CustomizationColorOption,
   ProductImageDto,
 } from '@vidntec/shared';
 import type { Prisma, ProductImage, Variant } from '@vidntec/shared/prisma';
@@ -10,6 +11,10 @@ export type ProductWithRelations = Prisma.ProductGetPayload<{
   include: { images: true; variants: true; category: true };
 }>;
 
+export function toColorOptions(value: Prisma.JsonValue): CustomizationColorOption[] {
+  return Array.isArray(value) ? (value as unknown as CustomizationColorOption[]) : [];
+}
+
 export function toImageDto(image: ProductImage): ProductImageDto {
   return {
     id: image.id,
@@ -17,6 +22,7 @@ export function toImageDto(image: ProductImage): ProductImageDto {
     publicId: image.publicId,
     position: image.position,
     type: image.type === 'video' ? 'video' : 'image',
+    variantId: image.variantId,
   };
 }
 
@@ -42,6 +48,9 @@ export function toAdminProduct(p: ProductWithRelations): AdminProduct {
     featured: p.featured,
     categoryId: p.categoryId,
     categoryName: p.category?.name ?? null,
+    customizationNameEnabled: p.customizationNameEnabled,
+    customizationColorEnabled: p.customizationColorEnabled,
+    customizationColorOptions: toColorOptions(p.customizationColorOptions),
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString(),
     images: [...p.images].sort((a, b) => a.position - b.position).map(toImageDto),

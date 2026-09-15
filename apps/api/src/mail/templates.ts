@@ -5,6 +5,8 @@ interface Line {
   titleSnapshot: string;
   priceSnapshot: number;
   quantity: number;
+  customNameSnapshot?: string | null;
+  customColorLabelSnapshot?: string | null;
 }
 
 interface OrderEmailData {
@@ -29,12 +31,19 @@ const wrap = (title: string, body: string) => `
 
 function lineRows(items: Line[], currency: string): string {
   return items
-    .map(
-      (l) => `<tr>
-        <td style="padding:6px 0">${escapeHtml(l.titleSnapshot)} × ${l.quantity}</td>
+    .map((l) => {
+      const personalization = [l.customNameSnapshot, l.customColorLabelSnapshot]
+        .filter(Boolean)
+        .join(', ');
+      return `<tr>
+        <td style="padding:6px 0">${escapeHtml(l.titleSnapshot)} × ${l.quantity}${
+          personalization
+            ? `<br /><span style="color:#8a8a8a;font-size:12px">${escapeHtml(personalization)}</span>`
+            : ''
+        }</td>
         <td style="padding:6px 0;text-align:right">${formatMoney(l.priceSnapshot * l.quantity, currency)}</td>
-      </tr>`,
-    )
+      </tr>`;
+    })
     .join('');
 }
 

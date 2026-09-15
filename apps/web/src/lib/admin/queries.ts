@@ -6,6 +6,8 @@ import type {
   AdminProduct,
   AdminProductListItem,
   AdminProductListQuery,
+  AdminReview,
+  AdminReviewListQuery,
   InventoryItem,
   OrderDetail,
   ShippingRate,
@@ -76,4 +78,16 @@ export function getCategoriesAdmin(): Promise<AdminCategory[]> {
 
 export function getStoreSettings(): Promise<StoreSettings> {
   return apiFetch<StoreSettings>('/admin/settings');
+}
+
+export function listReviewsAdmin(
+  query: Partial<AdminReviewListQuery>,
+): Promise<Paginated<AdminReview>> {
+  const params = new URLSearchParams();
+  if (query.productId) params.set('productId', query.productId);
+  if (query.rating) params.set('rating', String(query.rating));
+  if (query.page) params.set('page', String(query.page));
+  if (query.pageSize) params.set('pageSize', String(query.pageSize));
+  const qs = params.toString();
+  return apiFetch<Paginated<AdminReview>>(`/admin/reviews${qs ? `?${qs}` : ''}`);
 }

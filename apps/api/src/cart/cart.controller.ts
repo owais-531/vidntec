@@ -67,32 +67,35 @@ export class CartController {
     @CurrentUser() user?: AuthenticatedUser,
   ): Promise<CartView> {
     const cartId = await this.resolveWithCookie(req, res, user, true);
-    await this.cart.addItem(cartId!, body.variantId, body.quantity);
+    await this.cart.addItem(cartId!, body.variantId, body.quantity, {
+      customName: body.customName,
+      customColorLabel: body.customColorLabel,
+    });
     return this.cart.getView(cartId);
   }
 
-  @Patch('items/:variantId')
+  @Patch('items/:itemId')
   async update(
-    @Param('variantId') variantId: string,
+    @Param('itemId') itemId: string,
     @Body(new ZodValidationPipe(updateCartItemSchema)) body: UpdateCartItemInput,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
     @CurrentUser() user?: AuthenticatedUser,
   ): Promise<CartView> {
     const cartId = await this.resolveWithCookie(req, res, user, true);
-    await this.cart.setQuantity(cartId!, variantId, body.quantity);
+    await this.cart.setQuantity(cartId!, itemId, body.quantity);
     return this.cart.getView(cartId);
   }
 
-  @Delete('items/:variantId')
+  @Delete('items/:itemId')
   async remove(
-    @Param('variantId') variantId: string,
+    @Param('itemId') itemId: string,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
     @CurrentUser() user?: AuthenticatedUser,
   ): Promise<CartView> {
     const cartId = await this.resolveWithCookie(req, res, user, false);
-    if (cartId) await this.cart.removeItem(cartId, variantId);
+    if (cartId) await this.cart.removeItem(cartId, itemId);
     return this.cart.getView(cartId);
   }
 

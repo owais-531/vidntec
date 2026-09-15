@@ -103,6 +103,7 @@ Collect the rest:
    | `NEXT_PUBLIC_API_URL` | `https://<railway-domain>` (or your API custom domain) |
    | `NEXT_PUBLIC_SITE_URL` | `https://vidntec.com` — canonical URL for SEO (metadataBase, canonical tags, sitemap, robots, JSON-LD). No trailing slash. |
    | `JWT_ACCESS_SECRET` | **same value** as the API's — the web only verifies tokens |
+   | `NEXT_PUBLIC_GA_ID` | Google Analytics measurement id, e.g. `G-XXXXXXXXXX`. Leave unset in local `.env.local`. |
    | `NEXT_PUBLIC_SENTRY_DSN` | web project DSN |
    | `SENTRY_ENVIRONMENT` | `production` |
    | `SENTRY_ORG` / `SENTRY_PROJECT` / `SENTRY_AUTH_TOKEN` | for source-map upload |

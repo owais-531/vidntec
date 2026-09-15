@@ -15,6 +15,8 @@ interface Line {
   titleSnapshot: string;
   priceSnapshot: number;
   quantity: number;
+  customNameSnapshot?: string | null;
+  customColorLabelSnapshot?: string | null;
 }
 
 export interface OrderEmailPayload {

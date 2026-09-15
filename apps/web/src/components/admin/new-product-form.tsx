@@ -2,8 +2,14 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import { PRODUCT_STATUSES, type AdminCategory, type CreateProductInput } from '@vidntec/shared';
+import {
+  PRODUCT_STATUSES,
+  type AdminCategory,
+  type CreateProductInput,
+  type CustomizationColorOption,
+} from '@vidntec/shared';
 import { createProductAction } from '@/lib/actions/catalog';
+import { CustomizationFields } from '@/components/admin/customization-fields';
 import { inputToCents } from '@/lib/money-input';
 import { Card, CardBody } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,6 +42,11 @@ export function NewProductForm({ categories }: { categories: AdminCategory[] }) 
   const [featured, setFeatured] = useState(false);
   const [categoryId, setCategoryId] = useState('');
   const [rows, setRows] = useState<VariantRow[]>([emptyRow()]);
+  const [customizationNameEnabled, setCustomizationNameEnabled] = useState(false);
+  const [customizationColorEnabled, setCustomizationColorEnabled] = useState(false);
+  const [customizationColorOptions, setCustomizationColorOptions] = useState<
+    CustomizationColorOption[]
+  >([]);
 
   const setRow = (i: number, patch: Partial<VariantRow>) =>
     setRows((r) => r.map((row, idx) => (idx === i ? { ...row, ...patch } : row)));
@@ -69,12 +80,23 @@ export function NewProductForm({ categories }: { categories: AdminCategory[] }) 
       });
     }
 
+    const cleanColorOptions = customizationColorOptions
+      .map((o) => ({ label: o.label.trim(), hex: o.hex }))
+      .filter((o) => o.label);
+    if (customizationColorEnabled && cleanColorOptions.length === 0) {
+      setError('Add at least one color option, or turn off color personalization.');
+      return;
+    }
+
     const input: CreateProductInput = {
       title: title.trim(),
       description: description.trim(),
       status,
       featured,
       categoryId: categoryId || null,
+      customizationNameEnabled,
+      customizationColorEnabled,
+      customizationColorOptions: cleanColorOptions,
       variants,
       ...(slug.trim() ? { slug: slug.trim() } : {}),
     };
@@ -154,6 +176,19 @@ export function NewProductForm({ categories }: { categories: AdminCategory[] }) 
             />
             Trending — show in the storefront “Trending” section
           </label>
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardBody>
+          <CustomizationFields
+            nameEnabled={customizationNameEnabled}
+            onNameEnabledChange={setCustomizationNameEnabled}
+            colorEnabled={customizationColorEnabled}
+            onColorEnabledChange={setCustomizationColorEnabled}
+            colorOptions={customizationColorOptions}
+            onColorOptionsChange={setCustomizationColorOptions}
+          />
         </CardBody>
       </Card>
 

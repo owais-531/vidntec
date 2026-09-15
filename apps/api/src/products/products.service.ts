@@ -98,6 +98,9 @@ export class ProductsService {
           description: sanitizeDescription(input.description),
           status: input.status,
           featured: input.featured ?? false,
+          customizationNameEnabled: input.customizationNameEnabled,
+          customizationColorEnabled: input.customizationColorEnabled,
+          customizationColorOptions: input.customizationColorOptions as Prisma.InputJsonValue,
           ...(input.categoryId ? { category: { connect: { id: input.categoryId } } } : {}),
           variants: { create: input.variants },
         },
@@ -111,7 +114,7 @@ export class ProductsService {
 
   async update(id: string, input: UpdateProductInput): Promise<AdminProduct> {
     await this.ensureExists(id);
-    const { categoryId, ...rest } = input;
+    const { categoryId, customizationColorOptions, ...rest } = input;
     const data: Prisma.ProductUpdateInput = { ...rest };
     if (input.slug) data.slug = await this.uniqueSlug(input.slug, id);
     if (data.description !== undefined) {
@@ -120,6 +123,9 @@ export class ProductsService {
     if (categoryId !== undefined) {
       await this.assertCategoryExists(categoryId);
       data.category = categoryId ? { connect: { id: categoryId } } : { disconnect: true };
+    }
+    if (customizationColorOptions !== undefined) {
+      data.customizationColorOptions = customizationColorOptions as Prisma.InputJsonValue;
     }
 
     try {
@@ -281,6 +287,26 @@ export class ProductsService {
       await this.cloudinary.deleteAsset(image.publicId, image.type as MediaType);
     }
     await this.prisma.productImage.delete({ where: { id: imageId } });
+  }
+
+  async setImageVariant(
+    productId: string,
+    imageId: string,
+    variantId: string | null,
+  ): Promise<ProductImageDto> {
+    const image = await this.prisma.productImage.findFirst({
+      where: { id: imageId, productId },
+    });
+    if (!image) throw new NotFoundException('Image not found');
+    if (variantId) {
+      const variant = await this.prisma.variant.findFirst({ where: { id: variantId, productId } });
+      if (!variant) throw new BadRequestException('Selected variant does not belong to this product');
+    }
+    const updated = await this.prisma.productImage.update({
+      where: { id: imageId },
+      data: { variantId },
+    });
+    return toImageDto(updated);
   }
 
   // ── helpers ───────────────────────────────────────────────────────────────

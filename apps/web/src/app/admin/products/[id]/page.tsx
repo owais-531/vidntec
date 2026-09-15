@@ -45,7 +45,7 @@ export default async function ProductEditPage({
       <div className="space-y-5">
         <EditProductForm product={product} categories={categories} />
         <VariantsEditor productId={product.id} variants={product.variants} />
-        <ImageManager productId={product.id} images={product.images} />
+        <ImageManager productId={product.id} images={product.images} variants={product.variants} />
       </div>
     </>
   );

@@ -1,9 +1,20 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getStorefrontProduct } from '@/lib/storefront/queries';
-import { ProductGallery } from '@/components/store/product-gallery';
-import { VariantPicker } from '@/components/store/variant-picker';
+import {
+  getMyReview,
+  getProductReviews,
+  getStorefrontProduct,
+  listStorefrontProducts,
+} from '@/lib/storefront/queries';
+import { getSessionClaims } from '@/lib/auth';
+import { ProductViewer } from '@/components/store/product-viewer';
+import { BackButton } from '@/components/store/back-button';
+import { SectionHeading } from '@/components/store/section-heading';
+import { ProductCard } from '@/components/store/product-card';
+import { StarRating } from '@/components/store/star-rating';
+import { ReviewList } from '@/components/store/review-list';
+import { ReviewForm } from '@/components/store/review-form';
 import { JsonLd } from '@/components/seo/json-ld';
 import { SITE_URL, siteConfig, absoluteUrl } from '@/lib/site';
 import { stripHtml } from '@/lib/strip-html';
@@ -46,12 +57,32 @@ export async function generateMetadata({
 
 export default async function ProductDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ reviewsPage?: string }>;
 }) {
   const { slug } = await params;
+  const { reviewsPage } = await searchParams;
   const product = await getStorefrontProduct(slug);
   if (!product) notFound();
+
+  const reviewsPageNum = Math.max(1, Number(reviewsPage ?? '1') || 1);
+  const [reviews, session] = await Promise.all([
+    getProductReviews(product.id, reviewsPageNum),
+    getSessionClaims(),
+  ]);
+  const myReview = session ? await getMyReview(product.id) : null;
+
+  const suggested = product.category
+    ? (
+        await listStorefrontProducts({
+          category: product.category.slug,
+          sort: 'newest',
+          pageSize: 4,
+        })
+      ).items.filter((p) => p.slug !== product.slug).slice(0, 3)
+    : [];
 
   const path = `/products/${product.slug}`;
   const price = (cents: number) => (cents / 100).toFixed(2);
@@ -100,6 +131,7 @@ export default async function ProductDetailPage({
   return (
     <div>
       <JsonLd data={[productJsonLd, breadcrumbJsonLd]} />
+      <BackButton />
       <nav className="mb-5 text-xs text-ink-muted">
         <Link href="/products" className="hover:text-ink">
           Products
@@ -118,26 +150,62 @@ export default async function ProductDetailPage({
         <span aria-hidden>/</span> <span className="text-ink-soft">{product.title}</span>
       </nav>
 
-      <div className="grid gap-8 lg:grid-cols-2">
-        <ProductGallery images={product.images} title={product.title} />
+      <ProductViewer
+        title={product.title}
+        description={product.description}
+        images={product.images}
+        variants={product.variants}
+        customizationNameEnabled={product.customizationNameEnabled}
+        customizationColorEnabled={product.customizationColorEnabled}
+        customizationColorOptions={product.customizationColorOptions}
+      />
 
-        <div>
-          <h1 className="text-2xl font-bold">{product.title}</h1>
-          <div className="mt-6">
-            <VariantPicker variants={product.variants} />
-          </div>
-
-          {product.description ? (
-            <div className="mt-8 border-t border-paper-line pt-6">
-              <h2 className="mb-2 text-sm font-semibold">Description</h2>
-              <div
-                className="text-sm leading-relaxed text-ink-soft [&_em]:italic [&_li]:mt-1 [&_li:first-child]:mt-0 [&_p]:mb-3 [&_p:last-child]:mb-0 [&_strong]:font-semibold [&_strong]:text-ink [&_ul]:my-3 [&_ul:first-child]:mt-0 [&_ul:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-5"
-                dangerouslySetInnerHTML={{ __html: product.description }}
-              />
-            </div>
-          ) : null}
+      <section className="mt-12">
+        <SectionHeading title="Reviews" />
+        <div className="mb-6 flex items-center gap-2">
+          <StarRating value={product.avgRating} />
+          <span className="text-sm text-ink-soft">
+            {product.avgRating != null ? product.avgRating.toFixed(1) : '—'} out of 5 ·{' '}
+            {product.reviewCount} review{product.reviewCount === 1 ? '' : 's'}
+          </span>
         </div>
-      </div>
+
+        {session ? (
+          <div className="mb-6">
+            <ReviewForm
+              key={myReview?.id ?? 'new'}
+              productId={product.id}
+              productSlug={product.slug}
+              existing={myReview}
+            />
+          </div>
+        ) : (
+          <p className="mb-6 text-sm text-ink-muted">
+            <Link href={`/login?next=/products/${product.slug}`} className="font-semibold text-brand-600 hover:underline">
+              Sign in
+            </Link>{' '}
+            to write a review.
+          </p>
+        )}
+
+        <ReviewList
+          reviews={reviews.items}
+          page={reviews.page}
+          lastPage={Math.max(1, Math.ceil(reviews.total / reviews.pageSize))}
+          slug={product.slug}
+        />
+      </section>
+
+      {suggested.length > 0 ? (
+        <section className="mt-12">
+          <SectionHeading title="Suggested products" />
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {suggested.map((p) => (
+              <ProductCard key={p.id} product={p} />
+            ))}
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }

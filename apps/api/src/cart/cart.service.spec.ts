@@ -8,12 +8,11 @@ function makePrisma() {
     cart: { findFirst: vi.fn(), findUnique: vi.fn(), create: vi.fn(), delete: vi.fn() },
     cartItem: {
       findMany: vi.fn().mockResolvedValue([]),
-      findUnique: vi.fn(),
+      findFirst: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
       updateMany: vi.fn(),
       deleteMany: vi.fn(),
-      upsert: vi.fn(),
     },
     variant: { findUnique: vi.fn() },
     $transaction: vi.fn(async (fn: (tx: unknown) => unknown) => fn(txRef)),
@@ -39,13 +38,11 @@ describe('CartService.addItem', () => {
       stock: 4,
       product: { status: 'active' },
     });
-    ctx.prisma.cartItem.findUnique.mockResolvedValue({ quantity: 0 });
+    ctx.prisma.cartItem.findFirst.mockResolvedValue(null);
 
     await ctx.service.addItem('c1', 'v1', 99);
 
-    const upsertArg = ctx.prisma.cartItem.upsert.mock.calls[0][0];
-    expect(upsertArg.create.quantity).toBe(4);
-    expect(upsertArg.update.quantity).toBe(4);
+    expect(ctx.prisma.cartItem.create.mock.calls[0][0].data.quantity).toBe(4);
   });
 
   it('adds to the existing quantity', async () => {
@@ -54,11 +51,11 @@ describe('CartService.addItem', () => {
       stock: 50,
       product: { status: 'active' },
     });
-    ctx.prisma.cartItem.findUnique.mockResolvedValue({ quantity: 2 });
+    ctx.prisma.cartItem.findFirst.mockResolvedValue({ id: 'i1', quantity: 2 });
 
     await ctx.service.addItem('c1', 'v1', 3);
 
-    expect(ctx.prisma.cartItem.upsert.mock.calls[0][0].update.quantity).toBe(5);
+    expect(ctx.prisma.cartItem.update.mock.calls[0][0].data.quantity).toBe(5);
   });
 
   it('rejects an out-of-stock variant', async () => {

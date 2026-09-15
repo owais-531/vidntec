@@ -37,6 +37,7 @@ function make() {
       update: vi.fn(async ({ data }: { data: Record<string, unknown> }) => resolveWrite(data)),
     },
     category: { count: vi.fn().mockResolvedValue(1) },
+    variant: { findFirst: vi.fn().mockResolvedValue({ id: 'v1', productId: 'p1' }) },
     productImage: {
       findFirst: vi.fn().mockResolvedValue({ position: 0 }),
       create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => ({
@@ -45,6 +46,15 @@ function make() {
         url: data.url,
         position: data.position,
         type: data.type,
+        variantId: data.variantId ?? null,
+      })),
+      update: vi.fn(async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => ({
+        id: where.id,
+        publicId: null,
+        url: 'https://res.cloudinary.com/x/image/upload/v1/img.jpg',
+        position: 0,
+        type: 'image',
+        variantId: (data.variantId as string | null) ?? null,
       })),
       delete: vi.fn(),
     },
@@ -84,6 +94,43 @@ describe('ProductsService media', () => {
     });
     await ctx.service.removeImage('p1', 'img1');
     expect(ctx.cloudinary.deleteAsset).toHaveBeenCalledWith('vidntec/products/clip', 'video');
+  });
+});
+
+describe('ProductsService image-to-variant assignment', () => {
+  let ctx: ReturnType<typeof make>;
+  beforeEach(() => {
+    ctx = make();
+  });
+
+  it('assigns an image to a variant that belongs to the product', async () => {
+    const dto = await ctx.service.setImageVariant('p1', 'img1', 'v1');
+    expect(ctx.prisma.variant.findFirst).toHaveBeenCalledWith({
+      where: { id: 'v1', productId: 'p1' },
+    });
+    expect(ctx.prisma.productImage.update).toHaveBeenCalledWith({
+      where: { id: 'img1' },
+      data: { variantId: 'v1' },
+    });
+    expect(dto.variantId).toBe('v1');
+  });
+
+  it('clears the assignment when variantId is null, without checking any variant', async () => {
+    const dto = await ctx.service.setImageVariant('p1', 'img1', null);
+    expect(ctx.prisma.variant.findFirst).not.toHaveBeenCalled();
+    expect(dto.variantId).toBeNull();
+  });
+
+  it('rejects a variant that does not belong to this product', async () => {
+    ctx.prisma.variant.findFirst.mockResolvedValueOnce(null);
+    await expect(ctx.service.setImageVariant('p1', 'img1', 'other-product-variant')).rejects.toThrow(
+      'Selected variant does not belong to this product',
+    );
+  });
+
+  it('404s when the image does not belong to this product', async () => {
+    ctx.prisma.productImage.findFirst.mockResolvedValueOnce(null);
+    await expect(ctx.service.setImageVariant('p1', 'ghost', 'v1')).rejects.toThrow('Image not found');
   });
 });
 

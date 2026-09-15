@@ -2,6 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import type { PublicProductListItem } from '@vidntec/shared';
 import { Price } from './price';
+import { StarRating } from './star-rating';
 
 export function ProductCard({ product }: { product: PublicProductListItem }) {
   return (
@@ -34,6 +35,12 @@ export function ProductCard({ product }: { product: PublicProductListItem }) {
       <h3 className="line-clamp-2 min-h-[2.5rem] text-sm text-ink-soft group-hover:text-ink">
         {product.title}
       </h3>
+      {product.reviewCount > 0 ? (
+        <div className="mt-1 flex items-center gap-1">
+          <StarRating value={product.avgRating} size="xs" />
+          <span className="text-[11px] text-ink-muted">({product.reviewCount})</span>
+        </div>
+      ) : null}
       <Price
         min={product.priceMin}
         max={product.priceMax}

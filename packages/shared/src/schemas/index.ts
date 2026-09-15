@@ -6,3 +6,4 @@ export * from './cart';
 export * from './checkout';
 export * from './order';
 export * from './shipping';
+export * from './review';

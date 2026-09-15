@@ -1,7 +1,9 @@
 import type {
+  MyReview,
   PublicCategory,
   PublicProduct,
   PublicProductListItem,
+  PublicReview,
   StorefrontListQuery,
 } from '@vidntec/shared';
 import { apiFetch, ApiRequestError } from '../api';
@@ -64,6 +66,29 @@ export async function getStorefrontCategory(slug: string): Promise<PublicCategor
     );
   } catch (err) {
     if (err instanceof ApiRequestError && err.status === 404) return null;
+    throw err;
+  }
+}
+
+/** Not cached — reviews should show up immediately after a customer posts one. */
+export function getProductReviews(
+  productId: string,
+  page: number,
+): Promise<Paginated<PublicReview>> {
+  return apiFetch<Paginated<PublicReview>>(
+    `/products/${encodeURIComponent(productId)}/reviews?page=${page}`,
+    { forwardCookies: false },
+  );
+}
+
+/** The signed-in visitor's existing review for this product, or null (guest or none yet). */
+export async function getMyReview(productId: string): Promise<MyReview | null> {
+  try {
+    return await apiFetch<MyReview | null>(
+      `/products/${encodeURIComponent(productId)}/reviews/mine`,
+    );
+  } catch (err) {
+    if (err instanceof ApiRequestError && (err.status === 401 || err.status === 404)) return null;
     throw err;
   }
 }

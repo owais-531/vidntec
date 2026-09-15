@@ -2,14 +2,24 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import { PRODUCT_STATUSES, type AdminCategory, type AdminProduct } from '@vidntec/shared';
+import {
+  PRODUCT_STATUSES,
+  type AdminCategory,
+  type AdminProduct,
+  type CustomizationColorOption,
+} from '@vidntec/shared';
 import { deleteProductAction, updateProductAction } from '@/lib/actions/catalog';
 import { Card, CardBody } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Field, Input, Select } from '@/components/ui/field';
 import { RichTextEditor } from '@/components/admin/rich-text-editor';
+import { CustomizationFields } from '@/components/admin/customization-fields';
 import { ConfirmButton } from '@/components/ui/confirm-button';
 import { toast } from '@/components/ui/toast';
+
+function sameColorOptions(a: CustomizationColorOption[], b: CustomizationColorOption[]): boolean {
+  return a.length === b.length && a.every((o, i) => o.label === b[i]!.label && o.hex === b[i]!.hex);
+}
 
 export function EditProductForm({
   product,
@@ -28,6 +38,15 @@ export function EditProductForm({
   const [status, setStatus] = useState(product.status);
   const [featured, setFeatured] = useState(product.featured);
   const [categoryId, setCategoryId] = useState(product.categoryId ?? '');
+  const [customizationNameEnabled, setCustomizationNameEnabled] = useState(
+    product.customizationNameEnabled,
+  );
+  const [customizationColorEnabled, setCustomizationColorEnabled] = useState(
+    product.customizationColorEnabled,
+  );
+  const [customizationColorOptions, setCustomizationColorOptions] = useState<
+    CustomizationColorOption[]
+  >(product.customizationColorOptions);
 
   const dirty =
     title !== product.title ||
@@ -35,10 +54,20 @@ export function EditProductForm({
     description !== product.description ||
     status !== product.status ||
     featured !== product.featured ||
-    categoryId !== (product.categoryId ?? '');
+    categoryId !== (product.categoryId ?? '') ||
+    customizationNameEnabled !== product.customizationNameEnabled ||
+    customizationColorEnabled !== product.customizationColorEnabled ||
+    !sameColorOptions(customizationColorOptions, product.customizationColorOptions);
 
   const save = () => {
     setFieldErrors({});
+    const cleanColorOptions = customizationColorOptions
+      .map((o) => ({ label: o.label.trim(), hex: o.hex }))
+      .filter((o) => o.label);
+    if (customizationColorEnabled && cleanColorOptions.length === 0) {
+      setFieldErrors({ _: ['Add at least one color option, or turn off color personalization.'] });
+      return;
+    }
     startTransition(async () => {
       const res = await updateProductAction(product.id, {
         title: title.trim(),
@@ -47,6 +76,9 @@ export function EditProductForm({
         status,
         featured,
         categoryId: categoryId || null,
+        customizationNameEnabled,
+        customizationColorEnabled,
+        customizationColorOptions: cleanColorOptions,
       });
       if (res.ok) toast('Saved');
       else setFieldErrors(res.fieldErrors ?? { _: [res.error] });
@@ -105,6 +137,17 @@ export function EditProductForm({
           />
           Trending — show in the storefront “Trending” section
         </label>
+
+        <div className="border-t border-paper-line pt-4">
+          <CustomizationFields
+            nameEnabled={customizationNameEnabled}
+            onNameEnabledChange={setCustomizationNameEnabled}
+            colorEnabled={customizationColorEnabled}
+            onColorEnabledChange={setCustomizationColorEnabled}
+            colorOptions={customizationColorOptions}
+            onColorOptionsChange={setCustomizationColorOptions}
+          />
+        </div>
 
         {fieldErrors._?.[0] ? (
           <p className="rounded-card bg-brand-50 px-3 py-2 text-xs text-brand-700">

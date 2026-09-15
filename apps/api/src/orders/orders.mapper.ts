@@ -31,6 +31,9 @@ export function toOrderDetail(order: OrderWithItems): OrderDetail {
       priceSnapshot: i.priceSnapshot,
       quantity: i.quantity,
       lineTotal: i.priceSnapshot * i.quantity,
+      customNameSnapshot: i.customNameSnapshot,
+      customColorLabelSnapshot: i.customColorLabelSnapshot,
+      customColorHexSnapshot: i.customColorHexSnapshot,
     })),
   };
 }

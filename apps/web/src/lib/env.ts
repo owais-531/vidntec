@@ -18,10 +18,19 @@ const optionalUrl = z.preprocess(
   z.string().url().optional(),
 );
 
+const optionalString = z.preprocess(
+  (v) => (v === '' || v === undefined ? undefined : v),
+  z.string().optional(),
+);
+
 const publicEnvSchema = z.object({
   // Same API, but used from the browser. Usually identical to API_URL.
   NEXT_PUBLIC_API_URL: z.string().url(),
   NEXT_PUBLIC_SENTRY_DSN: optionalUrl,
+  // Google Analytics (gtag.js) measurement id, e.g. "G-XXXXXXXXXX". Unset =
+  // no analytics script rendered at all (kept unset in local .env.local so
+  // dev/testing traffic never reaches the real GA property).
+  NEXT_PUBLIC_GA_ID: optionalString,
 });
 
 export const serverEnv = serverEnvSchema.parse({
@@ -33,4 +42,5 @@ export const serverEnv = serverEnvSchema.parse({
 export const publicEnv = publicEnvSchema.parse({
   NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
   NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
+  NEXT_PUBLIC_GA_ID: process.env.NEXT_PUBLIC_GA_ID,
 });

@@ -1,7 +1,11 @@
 import { z } from 'zod';
 import { centsSchema, slugSchema } from './common';
 import { publicProductCategorySchema } from './category';
-import { MEDIA_TYPES, PRODUCT_STATUSES } from '../constants';
+import {
+  CUSTOMIZATION_MAX_COLOR_OPTIONS,
+  MEDIA_TYPES,
+  PRODUCT_STATUSES,
+} from '../constants';
 
 export const mediaTypeSchema = z.enum(MEDIA_TYPES);
 
@@ -23,26 +27,61 @@ export type VariantUpdate = z.infer<typeof variantUpdateSchema>;
 /** Category assignment: a cuid to assign, `null` to clear, omitted to leave unchanged. */
 const categoryIdSchema = z.string().cuid().nullable().optional();
 
-export const createProductSchema = z.object({
-  title: z.string().min(1).max(200),
-  // optional — server slugifies the title when omitted
-  slug: slugSchema.optional(),
-  description: z.string().max(20_000).default(''),
-  status: z.enum(PRODUCT_STATUSES).default('draft'),
-  featured: z.boolean().optional(),
-  categoryId: categoryIdSchema,
-  variants: z.array(variantInputSchema).min(1, 'a product needs at least one variant'),
+/** One admin-defined color a customer can pick for a customizable product. */
+export const customizationColorOptionSchema = z.object({
+  label: z.string().min(1).max(40),
+  hex: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'must be a hex color like #8a1a1c'),
 });
+export type CustomizationColorOption = z.infer<typeof customizationColorOptionSchema>;
+
+export const customizationColorOptionsSchema = z
+  .array(customizationColorOptionSchema)
+  .max(CUSTOMIZATION_MAX_COLOR_OPTIONS);
+
+/** Shared by create/update: color options are required once color customization is on. */
+function requireColorOptionsWhenEnabled(
+  data: { customizationColorEnabled?: boolean; customizationColorOptions?: unknown[] },
+  ctx: z.RefinementCtx,
+): void {
+  if (data.customizationColorEnabled && !data.customizationColorOptions?.length) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Add at least one color option',
+      path: ['customizationColorOptions'],
+    });
+  }
+}
+
+export const createProductSchema = z
+  .object({
+    title: z.string().min(1).max(200),
+    // optional — server slugifies the title when omitted
+    slug: slugSchema.optional(),
+    description: z.string().max(20_000).default(''),
+    status: z.enum(PRODUCT_STATUSES).default('draft'),
+    featured: z.boolean().optional(),
+    categoryId: categoryIdSchema,
+    customizationNameEnabled: z.boolean().default(false),
+    customizationColorEnabled: z.boolean().default(false),
+    customizationColorOptions: customizationColorOptionsSchema.default([]),
+    variants: z.array(variantInputSchema).min(1, 'a product needs at least one variant'),
+  })
+  .superRefine(requireColorOptionsWhenEnabled);
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 
-export const updateProductSchema = z.object({
-  title: z.string().min(1).max(200).optional(),
-  slug: slugSchema.optional(),
-  description: z.string().max(20_000).optional(),
-  status: z.enum(PRODUCT_STATUSES).optional(),
-  featured: z.boolean().optional(),
-  categoryId: categoryIdSchema,
-});
+export const updateProductSchema = z
+  .object({
+    title: z.string().min(1).max(200).optional(),
+    slug: slugSchema.optional(),
+    description: z.string().max(20_000).optional(),
+    status: z.enum(PRODUCT_STATUSES).optional(),
+    featured: z.boolean().optional(),
+    categoryId: categoryIdSchema,
+    customizationNameEnabled: z.boolean().optional(),
+    customizationColorEnabled: z.boolean().optional(),
+    customizationColorOptions: customizationColorOptionsSchema.optional(),
+  })
+  .superRefine(requireColorOptionsWhenEnabled);
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;
 
 export const stockAdjustmentSchema = z.object({
@@ -81,6 +120,13 @@ export const reorderImagesSchema = z.object({
 });
 export type ReorderImagesInput = z.infer<typeof reorderImagesSchema>;
 
+/** Ties an image to one variant so the storefront can switch to it when that
+ *  variant is selected. `null` clears the assignment (shown for all variants). */
+export const setImageVariantSchema = z.object({
+  variantId: z.string().cuid().nullable(),
+});
+export type SetImageVariantInput = z.infer<typeof setImageVariantSchema>;
+
 export const uploadSignatureRequestSchema = z.object({
   folder: z.string().max(120).default('vidntec/products'),
 });
@@ -94,6 +140,7 @@ export const productImageSchema = z.object({
   publicId: z.string().nullable(),
   position: z.number().int(),
   type: mediaTypeSchema,
+  variantId: z.string().nullable(),
 });
 export type ProductImageDto = z.infer<typeof productImageSchema>;
 
@@ -117,6 +164,9 @@ export const adminProductSchema = z.object({
   featured: z.boolean(),
   categoryId: z.string().nullable(),
   categoryName: z.string().nullable(),
+  customizationNameEnabled: z.boolean(),
+  customizationColorEnabled: z.boolean(),
+  customizationColorOptions: customizationColorOptionsSchema,
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
   images: z.array(productImageSchema),
@@ -203,6 +253,13 @@ const saleFields = {
   discountPercent: z.number().int(),
 };
 
+/** Review-aggregate fields shared by the list item and the full product DTO. */
+const reviewFields = {
+  /** Average of all rated reviews (rating-less reviews don't count); null with none. */
+  avgRating: z.number().nullable(),
+  reviewCount: z.number().int(),
+};
+
 export const publicVariantSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -221,13 +278,22 @@ export const publicProductSchema = z.object({
   description: z.string(),
   featured: z.boolean(),
   category: publicProductCategorySchema.nullable(),
+  customizationNameEnabled: z.boolean(),
+  customizationColorEnabled: z.boolean(),
+  customizationColorOptions: customizationColorOptionsSchema,
   images: z.array(
-    z.object({ url: z.string().url(), position: z.number().int(), type: mediaTypeSchema }),
+    z.object({
+      url: z.string().url(),
+      position: z.number().int(),
+      type: mediaTypeSchema,
+      variantId: z.string().nullable(),
+    }),
   ),
   variants: z.array(publicVariantSchema),
   inStock: z.boolean(),
   updatedAt: z.string().datetime(),
   ...saleFields,
+  ...reviewFields,
 });
 export type PublicProduct = z.infer<typeof publicProductSchema>;
 
@@ -240,5 +306,6 @@ export const publicProductListItemSchema = z.object({
   inStock: z.boolean(),
   updatedAt: z.string().datetime(),
   ...saleFields,
+  ...reviewFields,
 });
 export type PublicProductListItem = z.infer<typeof publicProductListItemSchema>;

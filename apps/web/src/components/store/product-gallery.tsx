@@ -1,21 +1,32 @@
 'use client';
 
 import Image from 'next/image';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { MediaType } from '@vidntec/shared';
 import { cn } from '@/lib/cn';
 import { posterUrl } from '@/lib/cloudinary-poster';
 
-type Media = { url: string; position: number; type: MediaType };
+type Media = { url: string; position: number; type: MediaType; variantId: string | null };
 
 export function ProductGallery({
   images,
   title,
+  selectedVariantId,
 }: {
   images: Media[];
   title: string;
+  /** When set, the gallery jumps to the first image assigned to this variant. */
+  selectedVariantId?: string;
 }) {
   const [active, setActive] = useState(0);
+
+  useEffect(() => {
+    if (!selectedVariantId) return;
+    const idx = images.findIndex((img) => img.variantId === selectedVariantId);
+    if (idx !== -1) setActive(idx);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedVariantId]);
+
   const current = images[active];
 
   return (

@@ -26,6 +26,9 @@ export interface OrderLineSnapshot {
   titleSnapshot: string;
   priceSnapshot: number;
   quantity: number;
+  customNameSnapshot: string | null;
+  customColorLabelSnapshot: string | null;
+  customColorHexSnapshot: string | null;
 }
 
 interface OrderPlan {
@@ -152,6 +155,9 @@ export class CheckoutService {
         titleSnapshot: `${variant.product.title} — ${variant.name}`,
         priceSnapshot: variant.price,
         quantity: item.quantity,
+        customNameSnapshot: item.customName,
+        customColorLabelSnapshot: item.customColorLabel,
+        customColorHexSnapshot: item.customColorHex,
       });
     }
 

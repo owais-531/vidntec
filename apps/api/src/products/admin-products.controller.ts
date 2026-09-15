@@ -15,12 +15,14 @@ import {
   attachImageSchema,
   createProductSchema,
   reorderImagesSchema,
+  setImageVariantSchema,
   updateProductSchema,
   variantInputSchema,
   type AdminProductListQuery,
   type AttachImageInput,
   type CreateProductInput,
   type ReorderImagesInput,
+  type SetImageVariantInput,
   type UpdateProductInput,
   type VariantInput,
 } from '@vidntec/shared';
@@ -99,5 +101,14 @@ export class AdminProductsController {
     @Param('imageId') imageId: string,
   ): Promise<void> {
     await this.products.removeImage(id, imageId);
+  }
+
+  @Patch(':id/images/:imageId/variant')
+  setImageVariant(
+    @Param('id') id: string,
+    @Param('imageId') imageId: string,
+    @Body(new ZodValidationPipe(setImageVariantSchema)) body: SetImageVariantInput,
+  ) {
+    return this.products.setImageVariant(id, imageId, body.variantId);
   }
 }

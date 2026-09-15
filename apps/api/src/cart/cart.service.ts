@@ -1,7 +1,13 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { MAX_CART_ITEM_QUANTITY, type CartLine, type CartView } from '@vidntec/shared';
-import type { Cart, CartItem } from '@vidntec/shared/prisma';
+import type { Cart, CartItem, Prisma } from '@vidntec/shared/prisma';
 import { PrismaService } from '../prisma/prisma.service';
+import { toColorOptions } from '../products/products.mapper';
 
 type GuestCartWithItems = Cart & { items: CartItem[] };
 
@@ -10,6 +16,24 @@ interface ResolvedCart {
   cartId: string | null;
   /** what the cart cookie should be set to (null = leave / no cart) */
   cookie: string | null;
+}
+
+/** The customer-supplied side of personalization, before server-side resolution. */
+export interface PersonalizationInput {
+  customName?: string;
+  customColorLabel?: string;
+}
+
+/** The stored/snapshot shape once resolved against the product's own config. */
+interface ResolvedPersonalization {
+  customName: string | null;
+  customColorLabel: string | null;
+  customColorHex: string | null;
+}
+
+/** Distinguishes cart lines for the same variant that differ only by personalization. */
+function personalizationKey(item: ResolvedPersonalization & { variantId: string }): string {
+  return `${item.variantId}::${item.customName ?? ''}::${item.customColorLabel ?? ''}::${item.customColorHex ?? ''}`;
 }
 
 @Injectable()
@@ -90,10 +114,10 @@ export class CartService {
         userCartId ?? (await tx.cart.create({ data: { userId }, select: { id: true } })).id;
 
       const targetItems = await tx.cartItem.findMany({ where: { cartId: targetId } });
-      const byVariant = new Map(targetItems.map((i) => [i.variantId, i]));
+      const byKey = new Map(targetItems.map((i) => [personalizationKey(i), i]));
 
       for (const item of guestCart.items) {
-        const existing = byVariant.get(item.variantId);
+        const existing = byKey.get(personalizationKey(item));
         if (existing) {
           await tx.cartItem.update({
             where: { id: existing.id },
@@ -107,6 +131,9 @@ export class CartService {
               cartId: targetId,
               variantId: item.variantId,
               quantity: Math.min(item.quantity, MAX_CART_ITEM_QUANTITY),
+              customName: item.customName,
+              customColorLabel: item.customColorLabel,
+              customColorHex: item.customColorHex,
             },
           });
         }
@@ -158,6 +185,9 @@ export class CartService {
         availableStock: variant.stock,
         maxQuantity: Math.min(variant.stock, MAX_CART_ITEM_QUANTITY),
         exceedsStock: item.quantity > variant.stock,
+        customName: item.customName,
+        customColorLabel: item.customColorLabel,
+        customColorHex: item.customColorHex,
       });
     }
 
@@ -179,10 +209,24 @@ export class CartService {
     };
   }
 
-  async addItem(cartId: string, variantId: string, quantity: number): Promise<void> {
+  async addItem(
+    cartId: string,
+    variantId: string,
+    quantity: number,
+    personalization: PersonalizationInput = {},
+  ): Promise<void> {
     const variant = await this.prisma.variant.findUnique({
       where: { id: variantId },
-      include: { product: { select: { status: true } } },
+      include: {
+        product: {
+          select: {
+            status: true,
+            customizationNameEnabled: true,
+            customizationColorEnabled: true,
+            customizationColorOptions: true,
+          },
+        },
+      },
     });
     if (!variant || variant.product.status !== 'active') {
       throw new NotFoundException('That product is not available');
@@ -191,8 +235,16 @@ export class CartService {
       throw new ConflictException('That option is out of stock');
     }
 
-    const existing = await this.prisma.cartItem.findUnique({
-      where: { cartId_variantId: { cartId, variantId } },
+    const resolved = this.resolvePersonalization(variant.product, personalization);
+
+    const existing = await this.prisma.cartItem.findFirst({
+      where: {
+        cartId,
+        variantId,
+        customName: resolved.customName,
+        customColorLabel: resolved.customColorLabel,
+        customColorHex: resolved.customColorHex,
+      },
     });
     const target = Math.min(
       (existing?.quantity ?? 0) + quantity,
@@ -200,30 +252,75 @@ export class CartService {
       MAX_CART_ITEM_QUANTITY,
     );
 
-    await this.prisma.cartItem.upsert({
-      where: { cartId_variantId: { cartId, variantId } },
-      create: { cartId, variantId, quantity: target },
-      update: { quantity: target },
-    });
+    if (existing) {
+      await this.prisma.cartItem.update({
+        where: { id: existing.id },
+        data: { quantity: target },
+      });
+    } else {
+      await this.prisma.cartItem.create({
+        data: { cartId, variantId, quantity: target, ...resolved },
+      });
+    }
   }
 
-  async setQuantity(cartId: string, variantId: string, quantity: number): Promise<void> {
+  async setQuantity(cartId: string, itemId: string, quantity: number): Promise<void> {
     if (quantity <= 0) {
-      await this.prisma.cartItem.deleteMany({ where: { cartId, variantId } });
+      await this.prisma.cartItem.deleteMany({ where: { id: itemId, cartId } });
       return;
     }
-    const variant = await this.prisma.variant.findUnique({ where: { id: variantId } });
-    if (!variant) throw new NotFoundException('Variant not found');
-
-    const target = Math.min(quantity, variant.stock, MAX_CART_ITEM_QUANTITY);
-    const updated = await this.prisma.cartItem.updateMany({
-      where: { cartId, variantId },
-      data: { quantity: target },
+    const item = await this.prisma.cartItem.findFirst({
+      where: { id: itemId, cartId },
+      include: { variant: true },
     });
-    if (updated.count === 0) throw new NotFoundException('That item is not in your cart');
+    if (!item) throw new NotFoundException('That item is not in your cart');
+
+    const target = Math.min(quantity, item.variant.stock, MAX_CART_ITEM_QUANTITY);
+    await this.prisma.cartItem.update({ where: { id: itemId }, data: { quantity: target } });
   }
 
-  async removeItem(cartId: string, variantId: string): Promise<void> {
-    await this.prisma.cartItem.deleteMany({ where: { cartId, variantId } });
+  async removeItem(cartId: string, itemId: string): Promise<void> {
+    await this.prisma.cartItem.deleteMany({ where: { id: itemId, cartId } });
+  }
+
+  // ── helpers ───────────────────────────────────────────────────────────────
+
+  /**
+   * Validates the customer's personalization choice against the product's own
+   * config and resolves it to what actually gets stored. Required fields that
+   * are missing/invalid throw — a customer can't skip personalization on a
+   * product that has it enabled. The color's hex always comes from the
+   * product's own options, never from the client.
+   */
+  private resolvePersonalization(
+    product: {
+      customizationNameEnabled: boolean;
+      customizationColorEnabled: boolean;
+      customizationColorOptions: Prisma.JsonValue;
+    },
+    input: PersonalizationInput,
+  ): ResolvedPersonalization {
+    let customName: string | null = null;
+    if (product.customizationNameEnabled) {
+      const trimmed = input.customName?.trim();
+      if (!trimmed) {
+        throw new BadRequestException('Please enter a name for this product');
+      }
+      customName = trimmed;
+    }
+
+    let customColorLabel: string | null = null;
+    let customColorHex: string | null = null;
+    if (product.customizationColorEnabled) {
+      const options = toColorOptions(product.customizationColorOptions);
+      const match = options.find((o) => o.label === input.customColorLabel);
+      if (!match) {
+        throw new BadRequestException('Please choose a color for this product');
+      }
+      customColorLabel = match.label;
+      customColorHex = match.hex;
+    }
+
+    return { customName, customColorLabel, customColorHex };
   }
 }

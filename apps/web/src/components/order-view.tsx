@@ -27,6 +27,13 @@ export function OrderView({ order }: { order: OrderDetail }) {
               <span>
                 {item.titleSnapshot}
                 <span className="text-ink-muted"> × {item.quantity}</span>
+                {item.customNameSnapshot || item.customColorLabelSnapshot ? (
+                  <span className="block text-xs text-ink-muted">
+                    {[item.customNameSnapshot && `“${item.customNameSnapshot}”`, item.customColorLabelSnapshot]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </span>
+                ) : null}
               </span>
               <span className="font-medium">{formatMoney(item.lineTotal, order.currency)}</span>
             </div>

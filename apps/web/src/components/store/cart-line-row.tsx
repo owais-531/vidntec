@@ -19,7 +19,7 @@ export function CartLineRow({ line }: { line: CartLine }) {
       else toast(res.error ?? 'Could not update cart', 'error');
     });
 
-  const setQty = (q: number) => mutate(() => updateCartLineAction(line.variantId, q));
+  const setQty = (q: number) => mutate(() => updateCartLineAction(line.itemId, q));
 
   return (
     <div className={pending ? 'opacity-60' : undefined}>
@@ -43,6 +43,23 @@ export function CartLineRow({ line }: { line: CartLine }) {
             {line.productTitle}
           </Link>
           <p className="text-xs text-ink-muted">{line.variantName}</p>
+          {line.customName || line.customColorLabel ? (
+            <p className="mt-0.5 flex items-center gap-1.5 text-xs text-ink-soft">
+              {line.customName ? <span>“{line.customName}”</span> : null}
+              {line.customColorLabel ? (
+                <span className="inline-flex items-center gap-1">
+                  {line.customColorHex ? (
+                    <span
+                      className="h-2.5 w-2.5 rounded-full border border-paper-line"
+                      style={{ backgroundColor: line.customColorHex }}
+                      aria-hidden
+                    />
+                  ) : null}
+                  {line.customColorLabel}
+                </span>
+              ) : null}
+            </p>
+          ) : null}
           <p className="mt-1 text-xs text-ink-soft">{formatMoney(line.unitPrice)} each</p>
 
           <div className="mt-2 flex items-center gap-3">
@@ -70,7 +87,7 @@ export function CartLineRow({ line }: { line: CartLine }) {
             <button
               type="button"
               disabled={pending}
-              onClick={() => mutate(() => removeCartLineAction(line.variantId))}
+              onClick={() => mutate(() => removeCartLineAction(line.itemId))}
               className="text-xs text-ink-muted underline underline-offset-2 hover:text-brand-600"
             >
               Remove

@@ -6,6 +6,7 @@ import type {
 } from '@vidntec/shared';
 import { Prisma } from '@vidntec/shared/prisma';
 import { PrismaService } from '../prisma/prisma.service';
+import { toColorOptions } from '../products/products.mapper';
 
 const ACTIVE = { status: 'active' } as const satisfies Prisma.ProductWhereInput;
 
@@ -14,6 +15,17 @@ type PricedVariant = { price: number; compareAtPrice: number | null };
 /** true when the variant has a "was" price above its selling price. */
 function variantOnSale(v: PricedVariant): boolean {
   return v.compareAtPrice != null && v.compareAtPrice > v.price;
+}
+
+/** Roll up rating aggregates keyed by productId into `{avgRating, reviewCount}`.
+ *  `reviewCount` is every review (rated or comment-only); `avgRating` only
+ *  averages the ones that carry a star rating. */
+function reviewInfo(
+  productId: string,
+  byProduct: Map<string, { _avg: { rating: number | null }; _count: { _all: number } }>,
+) {
+  const agg = byProduct.get(productId);
+  return { avgRating: agg?._avg.rating ?? null, reviewCount: agg?._count._all ?? 0 };
 }
 
 /** Roll up per-variant prices into the product-level sale fields. */
@@ -69,6 +81,17 @@ export class StorefrontService {
       this.prisma.product.count({ where }),
     ]);
 
+    // One extra batched query (not per-row) to avoid N+1 aggregates.
+    const ratingRows = rows.length
+      ? await this.prisma.review.groupBy({
+          by: ['productId'],
+          where: { productId: { in: rows.map((p) => p.id) } },
+          _avg: { rating: true },
+          _count: { _all: true },
+        })
+      : [];
+    const ratingByProduct = new Map(ratingRows.map((r) => [r.productId, r]));
+
     let items: PublicProductListItem[] = rows.map((p) => {
       // Cards / social previews always use a still image, never a video frame.
       const primary = [...p.images]
@@ -83,6 +106,7 @@ export class StorefrontService {
         inStock: p.variants.some((v) => v.stock > 0),
         updatedAt: p.updatedAt.toISOString(),
         ...saleInfo(p.variants),
+        ...reviewInfo(p.id, ratingByProduct),
       };
     });
 
@@ -107,6 +131,12 @@ export class StorefrontService {
     });
     if (!product) throw new NotFoundException('Product not found');
 
+    const ratingAgg = await this.prisma.review.aggregate({
+      where: { productId: product.id },
+      _avg: { rating: true },
+      _count: { _all: true },
+    });
+
     const variants = [...product.variants]
       .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
       .map((v) => ({
@@ -128,17 +158,23 @@ export class StorefrontService {
       category: product.category
         ? { name: product.category.name, slug: product.category.slug }
         : null,
+      customizationNameEnabled: product.customizationNameEnabled,
+      customizationColorEnabled: product.customizationColorEnabled,
+      customizationColorOptions: toColorOptions(product.customizationColorOptions),
       images: [...product.images]
         .sort((a, b) => a.position - b.position)
         .map((i) => ({
           url: i.url,
           position: i.position,
           type: i.type === 'video' ? ('video' as const) : ('image' as const),
+          variantId: i.variantId,
         })),
       variants,
       inStock: variants.some((v) => v.inStock),
       updatedAt: product.updatedAt.toISOString(),
       ...saleInfo(product.variants),
+      avgRating: ratingAgg._avg.rating,
+      reviewCount: ratingAgg._count._all,
     };
   }
 }

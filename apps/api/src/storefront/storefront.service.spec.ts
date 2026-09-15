@@ -4,6 +4,10 @@ import { StorefrontService } from './storefront.service';
 function make() {
   const prisma = {
     product: { findMany: vi.fn(), count: vi.fn(), findFirst: vi.fn() },
+    review: {
+      groupBy: vi.fn().mockResolvedValue([]),
+      aggregate: vi.fn().mockResolvedValue({ _avg: { rating: null }, _count: { _all: 0 } }),
+    },
     $transaction: vi.fn(async (ops: unknown[]) => Promise.all(ops as Promise<unknown>[])),
   };
   return { prisma, service: new StorefrontService(prisma as never) };
@@ -121,6 +125,22 @@ describe('StorefrontService.list', () => {
     expect(items.map((i) => i.id)).toEqual(['a']);
     expect(total).toBe(1);
   });
+
+  it('avgRating/reviewCount default to null/0 with no reviews', async () => {
+    ctx.prisma.product.findMany.mockResolvedValue([product()]);
+    const { items } = await ctx.service.list(query());
+    expect(items[0]).toMatchObject({ avgRating: null, reviewCount: 0 });
+  });
+
+  it('avgRating/reviewCount come from one batched groupBy, joined per product', async () => {
+    ctx.prisma.product.findMany.mockResolvedValue([product({ id: 'a' }), product({ id: 'b' })]);
+    ctx.prisma.review.groupBy.mockResolvedValue([
+      { productId: 'a', _avg: { rating: 4.5 }, _count: { _all: 2 } },
+    ]);
+    const { items } = await ctx.service.list(query());
+    expect(items.find((i) => i.id === 'a')).toMatchObject({ avgRating: 4.5, reviewCount: 2 });
+    expect(items.find((i) => i.id === 'b')).toMatchObject({ avgRating: null, reviewCount: 0 });
+  });
 });
 
 describe('StorefrontService.getBySlug', () => {
@@ -154,20 +174,47 @@ describe('StorefrontService.getBySlug', () => {
     expect(withoutCat.category).toBeNull();
   });
 
-  it('returns gallery media sorted by position with the image/video type preserved', async () => {
+  it('returns gallery media sorted by position with the image/video type and variant tag preserved', async () => {
     const ctx = make();
     ctx.prisma.product.findFirst.mockResolvedValue(
       product({
         images: [
-          { url: 'https://img/b.jpg', position: 1, type: 'image' },
-          { url: 'https://res.cloudinary.com/x/video/upload/v1/clip.mp4', position: 0, type: 'video' },
+          { url: 'https://img/b.jpg', position: 1, type: 'image', variantId: 'v-red' },
+          {
+            url: 'https://res.cloudinary.com/x/video/upload/v1/clip.mp4',
+            position: 0,
+            type: 'video',
+            variantId: null,
+          },
         ],
       }),
     );
     const res = await ctx.service.getBySlug('t');
     expect(res.images).toEqual([
-      { url: 'https://res.cloudinary.com/x/video/upload/v1/clip.mp4', position: 0, type: 'video' },
-      { url: 'https://img/b.jpg', position: 1, type: 'image' },
+      {
+        url: 'https://res.cloudinary.com/x/video/upload/v1/clip.mp4',
+        position: 0,
+        type: 'video',
+        variantId: null,
+      },
+      { url: 'https://img/b.jpg', position: 1, type: 'image', variantId: 'v-red' },
     ]);
+  });
+
+  it('avgRating is null and reviewCount is 0 with no reviews', async () => {
+    const ctx = make();
+    ctx.prisma.product.findFirst.mockResolvedValue(product());
+    const res = await ctx.service.getBySlug('t');
+    expect(res.avgRating).toBeNull();
+    expect(res.reviewCount).toBe(0);
+  });
+
+  it('avgRating/reviewCount come from the review aggregate', async () => {
+    const ctx = make();
+    ctx.prisma.product.findFirst.mockResolvedValue(product());
+    ctx.prisma.review.aggregate.mockResolvedValue({ _avg: { rating: 3.75 }, _count: { _all: 4 } });
+    const res = await ctx.service.getBySlug('t');
+    expect(res.avgRating).toBe(3.75);
+    expect(res.reviewCount).toBe(4);
   });
 });

@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { Poppins } from 'next/font/google';
 import { siteConfig, SITE_URL } from '@/lib/site';
+import { publicEnv } from '@/lib/env';
+import { GoogleAnalytics } from '@/components/analytics/google-analytics';
 import './globals.css';
 
 const poppins = Poppins({
@@ -40,6 +42,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={poppins.variable}>
       <body className="font-sans">{children}</body>
+      {publicEnv.NEXT_PUBLIC_GA_ID ? <GoogleAnalytics gaId={publicEnv.NEXT_PUBLIC_GA_ID} /> : null}
     </html>
   );
 }

@@ -9,7 +9,7 @@ export function ProductCard({ product }: { product: PublicProductListItem }) {
       href={`/products/${product.slug}`}
       className="group flex flex-col rounded-card bg-white p-3 transition-shadow hover:shadow-card"
     >
-      <div className="relative mb-3 aspect-square overflow-hidden rounded bg-paper-sunken">
+      <div className="relative mb-3 aspect-square overflow-hidden rounded border-4 border-paper-sunken bg-white">
         {product.primaryImageUrl ? (
           <Image
             src={product.primaryImageUrl}

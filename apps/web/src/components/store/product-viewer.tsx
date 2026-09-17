@@ -17,6 +17,7 @@ export function ProductViewer({
   customizationNameEnabled,
   customizationColorEnabled,
   customizationColorOptions,
+  productUrl,
 }: {
   title: string;
   description: string;
@@ -25,6 +26,7 @@ export function ProductViewer({
   customizationNameEnabled: boolean;
   customizationColorEnabled: boolean;
   customizationColorOptions: CustomizationColorOption[];
+  productUrl: string;
 }) {
   const [selectedVariantId, setSelectedVariantId] = useState<string>();
 
@@ -41,6 +43,7 @@ export function ProductViewer({
             customizationColorEnabled={customizationColorEnabled}
             customizationColorOptions={customizationColorOptions}
             onVariantChange={setSelectedVariantId}
+            productUrl={productUrl}
           />
         </div>
 

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Logo } from '@/components/ui/logo';
+import { whatsappUrl } from '@/lib/whatsapp';
 
 const POLICY_LINKS = [
   { href: '/returns-and-refunds', label: 'Return & Refunds' },
@@ -41,7 +42,7 @@ export function SiteFooter() {
               info@vidntec.com
             </a>
             <a
-              href="https://wa.me/923175791001"
+              href={whatsappUrl()}
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-ink"

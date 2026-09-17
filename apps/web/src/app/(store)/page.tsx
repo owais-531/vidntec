@@ -5,6 +5,7 @@ import { SectionHeading } from '@/components/store/section-heading';
 import { ProductGrid } from '@/components/store/product-grid';
 import { JsonLd } from '@/components/seo/json-ld';
 import { buttonClasses } from '@/components/ui/button';
+import { whatsappUrl } from '@/lib/whatsapp';
 import { SITE_URL, siteConfig } from '@/lib/site';
 
 export const metadata: Metadata = {
@@ -55,18 +56,21 @@ export default async function HomePage() {
           A curated catalog of functional and decorative prints. Pick a finish, place your order,
           and we print it fresh.
         </p>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Link href="/products" className={buttonClasses('secondary', 'md', '!text-brand-600')}>
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+          <Link
+            href="/products"
+            className={buttonClasses('secondary', 'md', 'w-full !text-brand-600 sm:w-auto')}
+          >
             Shop the catalog
           </Link>
           <a
-            href="https://wa.me/923175791001"
+            href={whatsappUrl('Hello, I want to place a custom order')}
             target="_blank"
             rel="noopener noreferrer"
             className={buttonClasses(
               'secondary',
               'md',
-              '!border-white/60 !bg-transparent !text-white hover:!bg-white/10',
+              'w-full !border-white/60 !bg-transparent !text-white hover:!bg-white/10 sm:w-auto',
             )}
           >
             Place custom order

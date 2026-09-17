@@ -10,9 +10,11 @@ import {
 } from '@vidntec/shared';
 import { cn } from '@/lib/cn';
 import { addToCartAction } from '@/lib/cart/actions';
-import { Button } from '@/components/ui/button';
+import { whatsappUrl } from '@/lib/whatsapp';
+import { Button, buttonClasses } from '@/components/ui/button';
 import { Input } from '@/components/ui/field';
 import { toast } from '@/components/ui/toast';
+import { WhatsappIcon } from './whatsapp-icon';
 
 export function VariantPicker({
   variants,
@@ -20,6 +22,7 @@ export function VariantPicker({
   customizationColorEnabled = false,
   customizationColorOptions = [],
   onVariantChange,
+  productUrl,
 }: {
   variants: PublicVariant[];
   customizationNameEnabled?: boolean;
@@ -27,6 +30,7 @@ export function VariantPicker({
   customizationColorOptions?: CustomizationColorOption[];
   /** Fires with the selected variant's id, including once for the initial default. */
   onVariantChange?: (variantId: string) => void;
+  productUrl: string;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -200,6 +204,20 @@ export function VariantPicker({
           {pending ? 'Adding…' : selected.inStock ? 'Add to cart' : 'Sold out'}
         </Button>
       </div>
+
+      <a
+        href={whatsappUrl(`Hello, I want to order this product: ${productUrl}`)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={buttonClasses(
+          'primary',
+          'md',
+          'w-full gap-2 !border-0 !bg-[#25D366] !text-white hover:!bg-[#1ebe5b]',
+        )}
+      >
+        <WhatsappIcon size={18} />
+        Order via WhatsApp
+      </a>
     </div>
   );
 }

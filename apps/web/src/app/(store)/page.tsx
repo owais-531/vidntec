@@ -5,6 +5,7 @@ import { SectionHeading } from '@/components/store/section-heading';
 import { ProductGrid } from '@/components/store/product-grid';
 import { JsonLd } from '@/components/seo/json-ld';
 import { buttonClasses } from '@/components/ui/button';
+import { GiftMarqueeStrip } from '@/components/store/gift-marquee-strip';
 import { SITE_URL, siteConfig } from '@/lib/site';
 
 export const metadata: Metadata = {
@@ -44,7 +45,6 @@ export default async function HomePage() {
 
   return (
     <div className="space-y-10">
-      <JsonLd data={[orgJsonLd, websiteJsonLd]} />
       <section className="overflow-hidden rounded-card bg-brand-500 px-8 py-12 text-white sm:px-12 sm:py-16">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/70">
           Made to order
@@ -56,13 +56,30 @@ export default async function HomePage() {
           A curated catalog of functional and decorative prints. Pick a finish, place your order,
           and we print it fresh.
         </p>
-        <Link
-          href="/products"
-          className={buttonClasses('secondary', 'md', 'mt-6 !text-brand-600')}
-        >
-          Shop the catalog
-        </Link>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link href="/products" className={buttonClasses('secondary', 'md', '!text-brand-600')}>
+            Shop the catalog
+          </Link>
+          <a
+            href="https://wa.me/923175791001"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={buttonClasses(
+              'secondary',
+              'md',
+              '!border-white/60 !bg-transparent !text-white hover:!bg-white/10',
+            )}
+          >
+            Place custom order
+          </a>
+        </div>
+
+        <div className="-mx-8 -mb-12 mt-8 sm:-mx-12 sm:-mb-16">
+          <GiftMarqueeStrip />
+        </div>
       </section>
+
+      <JsonLd data={[orgJsonLd, websiteJsonLd]} />
 
       {trending.items.length > 0 ? (
         <section>

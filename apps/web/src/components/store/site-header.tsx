@@ -24,8 +24,8 @@ export function SiteHeader({
             <Link href="/track" className="opacity-90 hover:opacity-100">
               Track order
             </Link>
-            <Link href="/products" className="opacity-90 hover:opacity-100">
-              Browse the catalog
+            <Link href="/request-refund" className="opacity-90 hover:opacity-100">
+              Request a refund
             </Link>
           </nav>
         </div>

@@ -51,6 +51,18 @@ const config: Config = {
         card: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
         pop: '0 8px 30px rgba(0,0,0,0.12)',
       },
+      keyframes: {
+        marquee: {
+          '0%': { transform: 'translateX(0)' },
+          '100%': { transform: 'translateX(-50%)' },
+        },
+      },
+      animation: {
+        // Duration is tuned for the 8x-repeated content in GiftMarqueeStrip —
+        // if the repeat count there changes, this should scale with it to
+        // keep a readable, steady scroll speed.
+        marquee: 'marquee 160s linear infinite',
+      },
     },
   },
   plugins: [],

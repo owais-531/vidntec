@@ -129,6 +129,52 @@ export function verificationOtpEmail(code: string): { subject: string; html: str
   };
 }
 
+const REFUND_REQUEST_REASON_LABELS: Record<string, string> = {
+  damaged: 'Damaged',
+  defective: 'Defective',
+  wrong_item: 'Wrong item received',
+  other: 'Other',
+};
+
+export function refundRequestNotificationEmail(d: {
+  name: string;
+  email: string;
+  phone: string;
+  orderReference: string;
+  orderId: string;
+  reason: string;
+  details: string;
+  photos: { url: string }[];
+}): { subject: string; html: string } {
+  const photos = d.photos.length
+    ? `<p style="font-size:14px;margin:16px 0 8px"><strong>Photos</strong></p>
+       <div>${d.photos
+         .map(
+           (p) =>
+             `<a href="${escapeHtml(p.url)}" style="display:inline-block;margin:0 8px 8px 0">
+                <img src="${escapeHtml(p.url)}" width="120" height="120" style="width:120px;height:120px;object-fit:cover;border-radius:6px;border:1px solid #ececec" />
+              </a>`,
+         )
+         .join('')}</div>`
+    : '';
+  return {
+    subject: `Refund request — order ${escapeHtml(d.orderReference)}`,
+    html: wrap(
+      'New refund request',
+      `<table style="width:100%;font-size:14px">
+         <tr><td style="padding:4px 0;color:#4a4a4a;width:120px">Order</td><td style="padding:4px 0"><a href="https://vidntec.com/orders/${escapeHtml(d.orderId)}">${escapeHtml(d.orderReference)}</a></td></tr>
+         <tr><td style="padding:4px 0;color:#4a4a4a">Name</td><td style="padding:4px 0">${escapeHtml(d.name)}</td></tr>
+         <tr><td style="padding:4px 0;color:#4a4a4a">Email</td><td style="padding:4px 0">${escapeHtml(d.email)}</td></tr>
+         <tr><td style="padding:4px 0;color:#4a4a4a">Phone</td><td style="padding:4px 0">${escapeHtml(d.phone)}</td></tr>
+         <tr><td style="padding:4px 0;color:#4a4a4a">Reason</td><td style="padding:4px 0">${escapeHtml(REFUND_REQUEST_REASON_LABELS[d.reason] ?? d.reason)}</td></tr>
+       </table>
+       <p style="font-size:14px;margin:16px 0 4px"><strong>Details</strong></p>
+       <p style="font-size:14px;white-space:pre-line">${escapeHtml(d.details)}</p>
+       ${photos}`,
+    ),
+  };
+}
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, '&amp;')

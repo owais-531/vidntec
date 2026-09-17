@@ -7,9 +7,14 @@ import type { Env } from '../config/env';
 import {
   orderConfirmationEmail,
   passwordResetEmail,
+  refundRequestNotificationEmail,
   shippingNotificationEmail,
   verificationOtpEmail,
 } from './templates';
+
+/** Where refund-request notifications go — the shop's own support inbox,
+ *  not a customer. Same address published everywhere else on the site. */
+const SUPPORT_EMAIL = 'info@vidntec.com';
 
 interface Line {
   titleSnapshot: string;
@@ -77,6 +82,27 @@ export class MailService {
     // The code is embedded in the tag (not just the body) so it's visible in
     // the log-only dev fallback below, which never logs the HTML body.
     await this.send(to, subject, html, `verify-otp code=${code} ${to}`);
+  }
+
+  /** Notifies the shop's support inbox — not the customer. There's no DB
+   *  record of a refund request; this email IS the record. */
+  async sendRefundRequestNotification(payload: {
+    name: string;
+    email: string;
+    phone: string;
+    orderReference: string;
+    orderId: string;
+    reason: string;
+    details: string;
+    photos: { url: string }[];
+  }): Promise<void> {
+    const { subject, html } = refundRequestNotificationEmail(payload);
+    await this.send(
+      SUPPORT_EMAIL,
+      subject,
+      html,
+      `refund-request order=${payload.orderReference} from=${payload.email}`,
+    );
   }
 
   private async send(to: string, subject: string, html: string, tag: string): Promise<void> {

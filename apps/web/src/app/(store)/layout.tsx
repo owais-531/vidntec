@@ -4,6 +4,7 @@ import { listStorefrontCategories } from '@/lib/storefront/queries';
 import { SiteHeader } from '@/components/store/site-header';
 import { SiteFooter } from '@/components/store/site-footer';
 import { CategorySidebar, CategorySidebarProvider } from '@/components/store/category-sidebar';
+import { Toaster } from '@/components/ui/toast';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,6 +23,7 @@ export default async function StoreLayout({ children }: { children: React.ReactN
         <div className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">{children}</div>
         <SiteFooter />
       </div>
+      <Toaster />
     </CategorySidebarProvider>
   );
 }

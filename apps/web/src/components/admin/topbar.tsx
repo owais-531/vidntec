@@ -9,6 +9,14 @@ export function Topbar({ email }: { email: string }) {
   return (
     <header className="flex h-16 shrink-0 items-center justify-end gap-4 border-b border-paper-line bg-white px-6">
       <span className="text-xs text-ink-muted">{email}</span>
+      <a
+        href="/"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="rounded-card border border-paper-line px-3 py-1.5 text-xs font-medium text-ink-soft hover:bg-paper-sunken"
+      >
+        Visit store
+      </a>
       <button
         type="button"
         disabled={pending}

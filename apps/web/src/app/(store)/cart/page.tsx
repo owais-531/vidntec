@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { formatMoney } from '@vidntec/shared';
 import { getCart } from '@/lib/cart/queries';
 import { CartLineRow } from '@/components/store/cart-line-row';
+import { GiftProgressBanner } from '@/components/store/gift-progress-banner';
 import { SectionHeading } from '@/components/store/section-heading';
 import { Card, CardBody } from '@/components/ui/card';
 import { buttonClasses } from '@/components/ui/button';
@@ -36,6 +37,8 @@ export default async function CartPage() {
           and {cart.removedCount === 1 ? 'was' : 'were'} removed.
         </p>
       ) : null}
+
+      <GiftProgressBanner subtotal={cart.subtotal} />
 
       <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
         <Card>

@@ -78,3 +78,15 @@ export const REVIEW_MAX_IMAGES = 4;
 /** Max size (bytes) for one review photo — smaller than the admin product-video
  *  cap since these are customer phone photos, not admin-curated clips. */
 export const REVIEW_MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+
+/** Free-gift order incentive — UI copy only, no gift inventory/fulfillment
+ *  tracking; whoever packs the order picks a mini gift (figurine/keychain)
+ *  by hand. Minor units (paisa), matches every other money value. */
+export const GIFT_THRESHOLD_CENTS = 500000; // Rs 5,000
+
+/** Refund requests are email-only (no DB record) — the form just emails
+ *  info@vidntec.com with the details; there's nothing to query by status. */
+export const REFUND_REQUEST_REASONS = ['damaged', 'defective', 'wrong_item', 'other'] as const;
+export const REFUND_REQUEST_DETAILS_MAX_LENGTH = 1000;
+export const REFUND_REQUEST_MAX_IMAGES = 4;
+export const REFUND_REQUEST_MAX_IMAGE_BYTES = 8 * 1024 * 1024;

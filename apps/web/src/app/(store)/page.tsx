@@ -5,7 +5,6 @@ import { SectionHeading } from '@/components/store/section-heading';
 import { ProductGrid } from '@/components/store/product-grid';
 import { JsonLd } from '@/components/seo/json-ld';
 import { buttonClasses } from '@/components/ui/button';
-import { GiftMarqueeStrip } from '@/components/store/gift-marquee-strip';
 import { SITE_URL, siteConfig } from '@/lib/site';
 
 export const metadata: Metadata = {
@@ -72,10 +71,6 @@ export default async function HomePage() {
           >
             Place custom order
           </a>
-        </div>
-
-        <div className="-mx-8 -mb-12 mt-8 sm:-mx-12 sm:-mb-16">
-          <GiftMarqueeStrip />
         </div>
       </section>
 

@@ -23,7 +23,7 @@ export function GiftMarqueeStrip() {
   return (
     <Link
       href="/products"
-      className="group block overflow-hidden rounded-card bg-brand-strip py-2.5 text-xs font-medium text-white hover:opacity-90 sm:text-sm"
+      className="group block overflow-hidden bg-brand-strip py-2.5 text-xs font-medium text-white hover:opacity-90 sm:text-sm"
     >
       <div className="flex w-max animate-marquee group-hover:[animation-play-state:paused] motion-reduce:animate-none">
         <MarqueeGroup />

@@ -4,6 +4,7 @@ import { Logo } from '@/components/ui/logo';
 import { SearchForm } from './search-form';
 import { SignOutButton } from './sign-out-button';
 import { CategorySidebarToggle } from './category-sidebar';
+import { GiftMarqueeStrip } from './gift-marquee-strip';
 
 export function SiteHeader({
   cartCount = 0,
@@ -75,6 +76,8 @@ export function SiteHeader({
           </Suspense>
         </div>
       </div>
+
+      <GiftMarqueeStrip />
     </header>
   );
 }

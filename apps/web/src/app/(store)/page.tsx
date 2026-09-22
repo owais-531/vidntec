@@ -94,6 +94,11 @@ export default async function HomePage() {
           linkLabel={`All ${total} products`}
         />
         <ProductGrid products={items} />
+        <div className="mt-6 flex justify-center">
+          <Link href="/products" className={buttonClasses('secondary', 'md')}>
+            View all products
+          </Link>
+        </div>
       </section>
 
       {onSale.items.length > 0 ? (

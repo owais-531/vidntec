@@ -16,6 +16,10 @@ import {
  *  not a customer. Same address published everywhere else on the site. */
 const SUPPORT_EMAIL = 'info@vidntec.com';
 
+/** Owner's personal inbox — CC'd on every order-confirmation email so new
+ *  orders are seen in real time, not just via the admin dashboard. */
+const ORDER_ALERT_EMAIL = 'muaznasir467@gmail.com';
+
 interface Line {
   titleSnapshot: string;
   priceSnapshot: number;
@@ -58,7 +62,8 @@ export class MailService {
 
   async sendOrderConfirmation(payload: OrderEmailPayload): Promise<void> {
     const { subject, html } = orderConfirmationEmail(payload);
-    await this.send(payload.to, subject, html, `order-confirmation ${payload.orderId}`);
+    const to = Array.from(new Set([payload.to, ORDER_ALERT_EMAIL]));
+    await this.send(to, subject, html, `order-confirmation ${payload.orderId}`);
   }
 
   async sendShippingNotification(payload: {
@@ -105,17 +110,23 @@ export class MailService {
     );
   }
 
-  private async send(to: string, subject: string, html: string, tag: string): Promise<void> {
+  private async send(
+    to: string | string[],
+    subject: string,
+    html: string,
+    tag: string,
+  ): Promise<void> {
+    const recipients = Array.isArray(to) ? to.join(', ') : to;
     if (!this.resend) {
-      this.logger.log(`[mail:log-only] ${tag} -> ${to} :: "${subject}"`);
+      this.logger.log(`[mail:log-only] ${tag} -> ${recipients} :: "${subject}"`);
       return;
     }
     try {
       const { error } = await this.resend.emails.send({ from: this.from, to, subject, html });
       if (error) throw new Error(error.message);
-      this.logger.log(`[mail:sent] ${tag} -> ${to}`);
+      this.logger.log(`[mail:sent] ${tag} -> ${recipients}`);
     } catch (err) {
-      this.logger.error(`[mail:failed] ${tag} -> ${to}`, err as Error);
+      this.logger.error(`[mail:failed] ${tag} -> ${recipients}`, err as Error);
       Sentry.captureException(err, { tags: { email: tag } });
       // never rethrow — email failure must not roll back an order
     }

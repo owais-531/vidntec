@@ -7,7 +7,7 @@ import { GIFT_THRESHOLD_CENTS, formatMoney } from '@vidntec/shared';
 const REPEAT = 8;
 
 function MarqueeGroup() {
-  const text = `🎁 Free mini gift (figurines, keychains & more) on orders above ${formatMoney(GIFT_THRESHOLD_CENTS)} — shop now`;
+  const text = `🚚 Free delivery + 🎁 free mini gift (figurines, keychains & more) on orders above ${formatMoney(GIFT_THRESHOLD_CENTS)} — shop now`;
   return (
     <span className="flex shrink-0">
       {Array.from({ length: REPEAT }, (_, i) => (

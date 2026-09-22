@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import { Logo } from '@/components/ui/logo';
 import { SearchForm } from './search-form';
-import { SignOutButton } from './sign-out-button';
+import { AccountMenu } from './account-menu';
 import { CategorySidebarToggle } from './category-sidebar';
 import { GiftMarqueeStrip } from './gift-marquee-strip';
 
@@ -71,14 +71,14 @@ export function SiteHeader({
             </div>
 
             <nav className="ml-auto flex items-center gap-5 text-sm">
-              <Link
-                href={authed ? '/account/orders' : '/login'}
-                className="flex items-center gap-1.5 hover:opacity-90"
-              >
-                <AccountIcon />
-                <span className="hidden sm:inline">{authed ? 'Orders' : 'Account'}</span>
-              </Link>
-              {authed ? <SignOutButton /> : null}
+              {authed ? (
+                <AccountMenu />
+              ) : (
+                <Link href="/login" className="flex items-center gap-1.5 hover:opacity-90">
+                  <AccountIcon />
+                  <span className="hidden sm:inline">Account</span>
+                </Link>
+              )}
               <Link href="/cart" className="flex items-center gap-1.5 hover:opacity-90">
                 <CartIcon />
                 <span className="hidden sm:inline">Cart</span>

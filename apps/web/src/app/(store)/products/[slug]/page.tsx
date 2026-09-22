@@ -79,9 +79,9 @@ export default async function ProductDetailPage({
         await listStorefrontProducts({
           category: product.category.slug,
           sort: 'newest',
-          pageSize: 4,
+          pageSize: 5,
         })
-      ).items.filter((p) => p.slug !== product.slug).slice(0, 3)
+      ).items.filter((p) => p.slug !== product.slug).slice(0, 4)
     : [];
 
   const path = `/products/${product.slug}`;
@@ -200,7 +200,7 @@ export default async function ProductDetailPage({
       {suggested.length > 0 ? (
         <section className="mt-12">
           <SectionHeading title="Suggested products" />
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {suggested.map((p) => (
               <ProductCard key={p.id} product={p} />
             ))}

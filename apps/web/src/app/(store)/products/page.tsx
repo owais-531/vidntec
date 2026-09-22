@@ -31,7 +31,9 @@ export default async function ProductsPage({
   const q = sp.q?.trim() || undefined;
   const sort: SortValue = SORTS.has(sp.sort as SortValue) ? (sp.sort as SortValue) : 'newest';
   const page = Math.max(1, Number(sp.page ?? '1') || 1);
-  const pageSize = 24;
+  // Divisible by 5 to match ProductGrid's widest (xl:grid-cols-5) breakpoint,
+  // so a full page's last row isn't short one card.
+  const pageSize = 25;
 
   const { items, total } = await listStorefrontProducts({ q, sort, page, pageSize });
   const lastPage = Math.max(1, Math.ceil(total / pageSize));
@@ -57,6 +59,7 @@ export default async function ProductsPage({
         {total} product{total === 1 ? '' : 's'}
       </p>
 
+      <Pager page={page} lastPage={lastPage} hrefFor={hrefFor} className="mb-6" />
       <ProductGrid products={items} />
       <Pager page={page} lastPage={lastPage} hrefFor={hrefFor} />
     </div>

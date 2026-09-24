@@ -12,7 +12,7 @@ export default async function ShippingPage() {
     <>
       <PageHeader
         title="Shipping rates"
-        subtitle="Flat rates shown to customers at checkout"
+        subtitle="Only the cheapest active rate is charged at checkout — customers no longer choose a method. Rawalpindi and Islamabad always get free delivery regardless of this rate."
       />
       <ShippingRates rates={rates} />
     </>

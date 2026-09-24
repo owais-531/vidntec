@@ -13,11 +13,11 @@ import { apiCall } from '../api';
 import { parseSetCookies } from '../set-cookie';
 import { runAction, type ActionResult } from '../actions/result';
 
-export async function quoteAction(shippingRateId: string): Promise<ActionResult<Quote>> {
+export async function quoteAction(city: string): Promise<ActionResult<Quote>> {
   return runAction(async () => {
     const { data } = await apiCall<Quote>('/checkout/quote', {
       method: 'POST',
-      body: JSON.stringify({ shippingRateId }),
+      body: JSON.stringify({ city }),
     });
     return data;
   });

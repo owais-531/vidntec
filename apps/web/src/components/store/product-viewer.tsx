@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { CustomizationColorOption, MediaType, PublicVariant } from '@vidntec/shared';
+import type { CustomizationColorOption, MediaType, ProductSpec, PublicVariant } from '@vidntec/shared';
 import { ProductGallery } from './product-gallery';
 import { VariantPicker } from './variant-picker';
 
@@ -17,6 +17,7 @@ export function ProductViewer({
   customizationNameEnabled,
   customizationColorEnabled,
   customizationColorOptions,
+  specs,
   productUrl,
 }: {
   title: string;
@@ -26,6 +27,7 @@ export function ProductViewer({
   customizationNameEnabled: boolean;
   customizationColorEnabled: boolean;
   customizationColorOptions: CustomizationColorOption[];
+  specs: ProductSpec[];
   productUrl: string;
 }) {
   const [selectedVariantId, setSelectedVariantId] = useState<string>();
@@ -54,6 +56,20 @@ export function ProductViewer({
               className="text-sm leading-relaxed text-ink-soft [&_em]:italic [&_li]:mt-1 [&_li:first-child]:mt-0 [&_p]:mb-3 [&_p:last-child]:mb-0 [&_strong]:font-semibold [&_strong]:text-ink [&_ul]:my-3 [&_ul:first-child]:mt-0 [&_ul:last-child]:mb-0 [&_ul]:list-disc [&_ul]:pl-5"
               dangerouslySetInnerHTML={{ __html: description }}
             />
+          </div>
+        ) : null}
+
+        {specs.length > 0 ? (
+          <div className="mt-8 border-t border-paper-line pt-6">
+            <h2 className="mb-2 text-sm font-semibold">Details</h2>
+            <dl className="divide-y divide-paper-line text-sm">
+              {specs.map((s, i) => (
+                <div key={i} className="flex justify-between gap-4 py-2">
+                  <dt className="text-ink-muted">{s.label}</dt>
+                  <dd className="text-right font-medium text-ink">{s.value}</dd>
+                </div>
+              ))}
+            </dl>
           </div>
         ) : null}
       </div>

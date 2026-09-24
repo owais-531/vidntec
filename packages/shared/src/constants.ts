@@ -63,6 +63,9 @@ export const CUSTOMIZATION_NAME_MAX_LENGTH = 40;
 /** Max admin-defined text-color options for a customizable product. */
 export const CUSTOMIZATION_MAX_COLOR_OPTIONS = 4;
 
+/** Safety cap on admin-entered "Details" spec rows per product — not a UI-visible limit. */
+export const PRODUCT_SPEC_MAX_ROWS = 40;
+
 /** Variants at or below this stock level are flagged in the admin inventory view. */
 export const LOW_STOCK_THRESHOLD = 5;
 

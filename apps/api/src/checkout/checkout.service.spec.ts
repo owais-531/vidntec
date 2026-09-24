@@ -13,9 +13,12 @@ function make() {
   };
   const settings = { get: vi.fn().mockResolvedValue({ taxEnabled: true, taxRateBps: 1000, taxLabel: 'Tax', currency: 'usd' }) };
   const shipping = {
-    getActive: vi.fn().mockResolvedValue({ id: 'r1', name: 'Std', price: 500, minOrderForFree: 5000 }),
-    amountFor: (rate: { price: number; minOrderForFree: number | null }, subtotal: number) =>
-      rate.minOrderForFree !== null && subtotal >= rate.minOrderForFree ? 0 : rate.price,
+    resolveForAddress: vi.fn(async (city: string, subtotal: number) => {
+      const rate = { name: 'Std', price: 500, minOrderForFree: 5000 };
+      const free = city.trim().toLowerCase() === 'rawalpindi' || city.trim().toLowerCase() === 'islamabad';
+      const amount = free || subtotal >= rate.minOrderForFree ? 0 : rate.price;
+      return { amount, rateName: rate.name };
+    }),
   };
   const stripe = { client: {} };
   const mail = { sendOrderConfirmation: vi.fn().mockResolvedValue(undefined) };
@@ -56,7 +59,7 @@ describe('CheckoutService.quote', () => {
 
   it('prices from current variant data, adds shipping + tax', async () => {
     ctx.prisma.cart.findUnique.mockResolvedValue(activeCart(3, 1000)); // subtotal 3000
-    const q = await ctx.service.quote('c1', 'r1');
+    const q = await ctx.service.quote('c1', 'Lahore');
     expect(q.subtotal).toBe(3000);
     expect(q.shipping).toBe(500); // below 5000 free threshold
     expect(q.tax).toBe(300); // 10%
@@ -65,19 +68,26 @@ describe('CheckoutService.quote', () => {
 
   it('waives shipping past the free threshold', async () => {
     ctx.prisma.cart.findUnique.mockResolvedValue(activeCart(6, 1000)); // subtotal 6000
-    const q = await ctx.service.quote('c1', 'r1');
+    const q = await ctx.service.quote('c1', 'Lahore');
+    expect(q.shipping).toBe(0);
+    expect(q.shippingFree).toBe(true);
+  });
+
+  it('waives shipping for Rawalpindi/Islamabad regardless of subtotal', async () => {
+    ctx.prisma.cart.findUnique.mockResolvedValue(activeCart(1, 1000)); // subtotal 1000, below threshold
+    const q = await ctx.service.quote('c1', 'Rawalpindi');
     expect(q.shipping).toBe(0);
     expect(q.shippingFree).toBe(true);
   });
 
   it('rejects an empty cart', async () => {
     ctx.prisma.cart.findUnique.mockResolvedValue({ id: 'c1', userId: null, items: [] });
-    await expect(ctx.service.quote('c1', 'r1')).rejects.toBeInstanceOf(BadRequestException);
+    await expect(ctx.service.quote('c1', 'Lahore')).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('rejects when a line exceeds available stock', async () => {
     ctx.prisma.cart.findUnique.mockResolvedValue(activeCart(5, 1000, 2));
-    await expect(ctx.service.quote('c1', 'r1')).rejects.toBeInstanceOf(ConflictException);
+    await expect(ctx.service.quote('c1', 'Lahore')).rejects.toBeInstanceOf(ConflictException);
   });
 });
 
@@ -95,10 +105,10 @@ describe('CheckoutService COD order', () => {
             name: 'A',
             line1: 'B',
             city: 'C',
+            state: 'Punjab',
             postalCode: '1',
             country: 'US',
           },
-          shippingRateId: 'r1',
           paymentMethod: 'cod',
         },
         'c1',

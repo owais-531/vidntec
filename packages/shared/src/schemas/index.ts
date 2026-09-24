@@ -8,3 +8,4 @@ export * from './order';
 export * from './shipping';
 export * from './review';
 export * from './refund-request';
+export * from './chat';

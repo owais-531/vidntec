@@ -2,15 +2,14 @@ import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { listStorefrontProducts } from '@/lib/storefront/queries';
 import { SectionHeading } from '@/components/store/section-heading';
-import { ProductGrid } from '@/components/store/product-grid';
+import { ProductInfiniteGrid } from '@/components/store/product-infinite-grid';
 import { SortSelect } from '@/components/store/sort-select';
-import { Pager } from '@/components/store/pager';
 
 export const metadata: Metadata = {
   title: 'All products',
   description:
     'Browse the full VIDNTEC catalog of 3D-printed products — desk organizers, planters, articulated toys and more, made to order.',
-  // Filtered / paginated views collapse to the base listing for indexing.
+  // Filtered views collapse to the base listing for indexing.
   alternates: { canonical: '/products' },
   openGraph: {
     title: 'All products · VIDNTEC',
@@ -25,27 +24,16 @@ const SORTS = new Set<SortValue>(['newest', 'price-asc', 'price-desc', 'title'])
 export default async function ProductsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; sort?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; sort?: string }>;
 }) {
   const sp = await searchParams;
   const q = sp.q?.trim() || undefined;
   const sort: SortValue = SORTS.has(sp.sort as SortValue) ? (sp.sort as SortValue) : 'newest';
-  const page = Math.max(1, Number(sp.page ?? '1') || 1);
-  // Divisible by 5 to match ProductGrid's widest (xl:grid-cols-5) breakpoint,
+  // Divisible by 5 to match the grid's widest (xl:grid-cols-5) breakpoint,
   // so a full page's last row isn't short one card.
   const pageSize = 25;
 
-  const { items, total } = await listStorefrontProducts({ q, sort, page, pageSize });
-  const lastPage = Math.max(1, Math.ceil(total / pageSize));
-
-  const hrefFor = (p: number) => {
-    const usp = new URLSearchParams();
-    if (q) usp.set('q', q);
-    if (sort !== 'newest') usp.set('sort', sort);
-    if (p > 1) usp.set('page', String(p));
-    const qs = usp.toString();
-    return `/products${qs ? `?${qs}` : ''}`;
-  };
+  const { items, total } = await listStorefrontProducts({ q, sort, page: 1, pageSize });
 
   return (
     <div>
@@ -59,9 +47,14 @@ export default async function ProductsPage({
         {total} product{total === 1 ? '' : 's'}
       </p>
 
-      <Pager page={page} lastPage={lastPage} hrefFor={hrefFor} className="mb-6" />
-      <ProductGrid products={items} />
-      <Pager page={page} lastPage={lastPage} hrefFor={hrefFor} />
+      <ProductInfiniteGrid
+        key={`${q ?? ''}:${sort}`}
+        initialItems={items}
+        total={total}
+        pageSize={pageSize}
+        q={q}
+        sort={sort}
+      />
     </div>
   );
 }

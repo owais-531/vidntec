@@ -1,8 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import type {
-  ShippingRate as ShippingRateDto,
-  ShippingRateInput,
-  ShippingRateUpdate,
+import {
+  isFreeDeliveryCity,
+  type ShippingRate as ShippingRateDto,
+  type ShippingRateInput,
+  type ShippingRateUpdate,
 } from '@vidntec/shared';
 import type { ShippingRate } from '@vidntec/shared/prisma';
 import { PrismaService } from '../prisma/prisma.service';
@@ -26,10 +27,20 @@ export class ShippingService {
     return rates.map(toDto);
   }
 
-  async getActive(id: string): Promise<ShippingRate> {
-    const rate = await this.prisma.shippingRate.findFirst({ where: { id, active: true } });
-    if (!rate) throw new NotFoundException('Shipping option not available');
-    return rate;
+  /**
+   * The single flat rate actually charged at checkout — customers no longer pick a
+   * method. Free override for Rawalpindi/Islamabad; otherwise the cheapest active
+   * rate (still respecting its own `minOrderForFree` threshold, if set).
+   */
+  async resolveForAddress(
+    city: string,
+    subtotalCents: number,
+  ): Promise<{ amount: number; rateName: string }> {
+    const rates = await this.listActive();
+    if (rates.length === 0) throw new NotFoundException('No shipping rate configured');
+    const rate = rates[0]!;
+    const amount = isFreeDeliveryCity(city) ? 0 : this.amountFor(rate, subtotalCents);
+    return { amount, rateName: rate.name };
   }
 
   async create(input: ShippingRateInput): Promise<ShippingRateDto> {

@@ -64,8 +64,8 @@ export class CheckoutService {
 
   // ── public ────────────────────────────────────────────────────────────────
 
-  async quote(cartId: string | null, shippingRateId: string): Promise<Quote> {
-    const plan = await this.buildPlan(cartId, shippingRateId);
+  async quote(cartId: string | null, city: string): Promise<Quote> {
+    const plan = await this.buildPlan(cartId, city);
     return {
       subtotal: plan.subtotal,
       shipping: plan.shipping,
@@ -92,7 +92,7 @@ export class CheckoutService {
       );
     }
 
-    const plan = await this.buildPlan(cartId, input.shippingRateId);
+    const plan = await this.buildPlan(cartId, input.shippingAddress.city);
     return this.placeCodOrder(plan, input);
   }
 
@@ -119,7 +119,7 @@ export class CheckoutService {
   /** Re-price the cart from current data + validate stock. Never trusts the client. */
   private async buildPlan(
     cartId: string | null,
-    shippingRateId: string,
+    city: string,
   ): Promise<OrderPlan> {
     if (!cartId) throw new BadRequestException('Your cart is empty');
 
@@ -132,7 +132,6 @@ export class CheckoutService {
     }
 
     const settings = await this.settings.get();
-    const rate = await this.shipping.getActive(shippingRateId);
 
     const lines: OrderLineSnapshot[] = [];
     const problems: Array<{ item: string; available: number; requested: number }> = [];
@@ -171,7 +170,7 @@ export class CheckoutService {
     }
 
     const subtotal = lines.reduce((sum, l) => sum + l.priceSnapshot * l.quantity, 0);
-    const shipping = this.shipping.amountFor(rate, subtotal);
+    const { amount: shipping, rateName } = await this.shipping.resolveForAddress(city, subtotal);
     const tax = settings.taxEnabled ? taxForSubtotal(subtotal, settings.taxRateBps) : 0;
 
     return {
@@ -181,7 +180,7 @@ export class CheckoutService {
       subtotal,
       shipping,
       shippingFree: shipping === 0,
-      shippingRateName: rate.name,
+      shippingRateName: rateName,
       tax,
       taxLabel: settings.taxLabel,
       total: subtotal + shipping + tax,
@@ -280,7 +279,7 @@ export class CheckoutService {
       success_url: `${this.webOrigin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${this.webOrigin}/checkout`,
       expires_at: Math.floor(Date.now() / 1000) + this.sessionTtlSeconds,
-      metadata: { cartId: plan.cartId, shippingRateId: input.shippingRateId },
+      metadata: { cartId: plan.cartId },
     });
 
     if (!session.url) {
@@ -293,7 +292,6 @@ export class CheckoutService {
         userId,
         email: input.email,
         shippingAddress: input.shippingAddress as Prisma.InputJsonValue,
-        shippingRateId: input.shippingRateId,
         cartId: plan.cartId,
         currency: plan.currency,
         subtotal: plan.subtotal,

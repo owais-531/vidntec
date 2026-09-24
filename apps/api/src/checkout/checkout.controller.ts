@@ -44,7 +44,7 @@ export class CheckoutController {
     @CurrentUser() user?: AuthenticatedUser,
   ): Promise<Quote> {
     const cartId = await this.resolveCartId(req, user);
-    return this.checkout.quote(cartId, body.shippingRateId);
+    return this.checkout.quote(cartId, body.city);
   }
 
   @Post()

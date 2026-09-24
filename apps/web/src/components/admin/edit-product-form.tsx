@@ -7,6 +7,7 @@ import {
   type AdminCategory,
   type AdminProduct,
   type CustomizationColorOption,
+  type ProductSpec,
 } from '@vidntec/shared';
 import { deleteProductAction, updateProductAction } from '@/lib/actions/catalog';
 import { Card, CardBody } from '@/components/ui/card';
@@ -14,11 +15,16 @@ import { Button } from '@/components/ui/button';
 import { Field, Input, Select } from '@/components/ui/field';
 import { RichTextEditor } from '@/components/admin/rich-text-editor';
 import { CustomizationFields } from '@/components/admin/customization-fields';
+import { SpecFields } from '@/components/admin/spec-fields';
 import { ConfirmButton } from '@/components/ui/confirm-button';
 import { toast } from '@/components/ui/toast';
 
 function sameColorOptions(a: CustomizationColorOption[], b: CustomizationColorOption[]): boolean {
   return a.length === b.length && a.every((o, i) => o.label === b[i]!.label && o.hex === b[i]!.hex);
+}
+
+function sameSpecs(a: ProductSpec[], b: ProductSpec[]): boolean {
+  return a.length === b.length && a.every((s, i) => s.label === b[i]!.label && s.value === b[i]!.value);
 }
 
 export function EditProductForm({
@@ -47,6 +53,7 @@ export function EditProductForm({
   const [customizationColorOptions, setCustomizationColorOptions] = useState<
     CustomizationColorOption[]
   >(product.customizationColorOptions);
+  const [specs, setSpecs] = useState<ProductSpec[]>(product.specs);
 
   const dirty =
     title !== product.title ||
@@ -57,7 +64,8 @@ export function EditProductForm({
     categoryId !== (product.categoryId ?? '') ||
     customizationNameEnabled !== product.customizationNameEnabled ||
     customizationColorEnabled !== product.customizationColorEnabled ||
-    !sameColorOptions(customizationColorOptions, product.customizationColorOptions);
+    !sameColorOptions(customizationColorOptions, product.customizationColorOptions) ||
+    !sameSpecs(specs, product.specs);
 
   const save = () => {
     setFieldErrors({});
@@ -68,6 +76,9 @@ export function EditProductForm({
       setFieldErrors({ _: ['Add at least one color option, or turn off color personalization.'] });
       return;
     }
+    const cleanSpecs = specs
+      .map((s) => ({ label: s.label.trim(), value: s.value.trim() }))
+      .filter((s) => s.label && s.value);
     startTransition(async () => {
       const res = await updateProductAction(product.id, {
         title: title.trim(),
@@ -79,6 +90,7 @@ export function EditProductForm({
         customizationNameEnabled,
         customizationColorEnabled,
         customizationColorOptions: cleanColorOptions,
+        specs: cleanSpecs,
       });
       if (res.ok) toast('Saved');
       else setFieldErrors(res.fieldErrors ?? { _: [res.error] });
@@ -147,6 +159,10 @@ export function EditProductForm({
             colorOptions={customizationColorOptions}
             onColorOptionsChange={setCustomizationColorOptions}
           />
+        </div>
+
+        <div className="border-t border-paper-line pt-4">
+          <SpecFields specs={specs} onSpecsChange={setSpecs} />
         </div>
 
         {fieldErrors._?.[0] ? (

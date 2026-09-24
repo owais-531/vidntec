@@ -140,6 +140,9 @@ model Product {
   customizationColorEnabled Boolean       @default(false)
   // [{ label: string, hex: "#rrggbb" }], max 4 — enforced by Zod, not the DB
   customizationColorOptions Json          @default("[]")
+  // [{ label: string, value: string }] — free-form admin-entered spec rows,
+  // shown on the PDP as a "Details" table. No cap other than the Zod max.
+  specs                     Json          @default("[]")
   createdAt                 DateTime      @default(now())
   updatedAt                 DateTime      @updatedAt
 

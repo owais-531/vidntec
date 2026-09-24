@@ -4,6 +4,7 @@ import { publicProductCategorySchema } from './category';
 import {
   CUSTOMIZATION_MAX_COLOR_OPTIONS,
   MEDIA_TYPES,
+  PRODUCT_SPEC_MAX_ROWS,
   PRODUCT_STATUSES,
 } from '../constants';
 
@@ -38,6 +39,15 @@ export const customizationColorOptionsSchema = z
   .array(customizationColorOptionSchema)
   .max(CUSTOMIZATION_MAX_COLOR_OPTIONS);
 
+/** One admin-entered "Details" row on a product — freeform, not a fixed attribute set. */
+export const productSpecSchema = z.object({
+  label: z.string().min(1).max(80),
+  value: z.string().min(1).max(300),
+});
+export type ProductSpec = z.infer<typeof productSpecSchema>;
+
+export const productSpecsSchema = z.array(productSpecSchema).max(PRODUCT_SPEC_MAX_ROWS);
+
 /** Shared by create/update: color options are required once color customization is on. */
 function requireColorOptionsWhenEnabled(
   data: { customizationColorEnabled?: boolean; customizationColorOptions?: unknown[] },
@@ -64,6 +74,7 @@ export const createProductSchema = z
     customizationNameEnabled: z.boolean().default(false),
     customizationColorEnabled: z.boolean().default(false),
     customizationColorOptions: customizationColorOptionsSchema.default([]),
+    specs: productSpecsSchema.default([]),
     variants: z.array(variantInputSchema).min(1, 'a product needs at least one variant'),
   })
   .superRefine(requireColorOptionsWhenEnabled);
@@ -80,6 +91,7 @@ export const updateProductSchema = z
     customizationNameEnabled: z.boolean().optional(),
     customizationColorEnabled: z.boolean().optional(),
     customizationColorOptions: customizationColorOptionsSchema.optional(),
+    specs: productSpecsSchema.optional(),
   })
   .superRefine(requireColorOptionsWhenEnabled);
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;
@@ -167,6 +179,7 @@ export const adminProductSchema = z.object({
   customizationNameEnabled: z.boolean(),
   customizationColorEnabled: z.boolean(),
   customizationColorOptions: customizationColorOptionsSchema,
+  specs: productSpecsSchema,
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
   images: z.array(productImageSchema),
@@ -281,6 +294,7 @@ export const publicProductSchema = z.object({
   customizationNameEnabled: z.boolean(),
   customizationColorEnabled: z.boolean(),
   customizationColorOptions: customizationColorOptionsSchema,
+  specs: productSpecsSchema,
   images: z.array(
     z.object({
       url: z.string().url(),

@@ -3,24 +3,23 @@
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect, useState, useTransition } from 'react';
-import { formatMoney, type CartView, type Quote, type ShippingRate } from '@vidntec/shared';
+import { PAKISTAN_REGIONS, formatMoney, type CartView, type Quote } from '@vidntec/shared';
 import { checkoutAction, quoteAction } from '@/lib/checkout/actions';
-import { cn } from '@/lib/cn';
 import { Card, CardBody } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Field, Input } from '@/components/ui/field';
+import { Field, Input, Select } from '@/components/ui/field';
 
 // Online payment (Stripe) is disabled until a PKR gateway is wired — see M9.
 // Checkout is Cash on Delivery only for now.
 const PAYMENT_METHOD = 'cod' as const;
 
+const OTHER_CITY = '__other__';
+
 export function CheckoutForm({
   cart,
-  rates,
   defaultEmail,
 }: {
   cart: CartView;
-  rates: ShippingRate[];
   defaultEmail: string;
 }) {
   const router = useRouter();
@@ -31,28 +30,34 @@ export function CheckoutForm({
     name: '',
     line1: '',
     line2: '',
-    city: '',
-    state: '',
     postalCode: '',
     country: 'PK',
   });
-  const [rateId, setRateId] = useState(rates[0]?.id ?? '');
+  const [regionId, setRegionId] = useState('');
+  const [citySelect, setCitySelect] = useState('');
+  const [otherCity, setOtherCity] = useState('');
   const [quote, setQuote] = useState<Quote | null>(null);
   const [error, setError] = useState<string>();
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
 
   const setField = (k: keyof typeof addr, v: string) => setAddr((a) => ({ ...a, [k]: v }));
 
+  const region = PAKISTAN_REGIONS.find((r) => r.id === regionId);
+  const city = citySelect === OTHER_CITY ? otherCity.trim() : citySelect;
+
   useEffect(() => {
-    if (!rateId) return;
+    if (!city) {
+      setQuote(null);
+      return;
+    }
     let cancelled = false;
-    quoteAction(rateId).then((res) => {
+    quoteAction(city).then((res) => {
       if (!cancelled && res.ok) setQuote(res.data);
     });
     return () => {
       cancelled = true;
     };
-  }, [rateId]);
+  }, [city]);
 
   const submit = () => {
     setError(undefined);
@@ -64,12 +69,11 @@ export function CheckoutForm({
           name: addr.name.trim(),
           line1: addr.line1.trim(),
           ...(addr.line2.trim() ? { line2: addr.line2.trim() } : {}),
-          city: addr.city.trim(),
-          ...(addr.state.trim() ? { state: addr.state.trim() } : {}),
+          city,
+          state: region?.name ?? '',
           ...(addr.postalCode.trim() ? { postalCode: addr.postalCode.trim() } : {}),
           country: addr.country.trim().toUpperCase(),
         },
-        shippingRateId: rateId,
         paymentMethod: PAYMENT_METHOD,
       });
 
@@ -85,8 +89,6 @@ export function CheckoutForm({
       }
     });
   };
-
-  const rate = rates.find((r) => r.id === rateId);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
@@ -119,12 +121,52 @@ export function CheckoutForm({
               <Input value={addr.line2} onChange={(e) => setField('line2', e.target.value)} />
             </Field>
             <div className="grid grid-cols-2 gap-4">
+              <Field
+                label="Province"
+                required
+                error={fieldErrors['shippingAddress.state']?.[0]}
+              >
+                <Select
+                  value={regionId}
+                  onChange={(e) => {
+                    setRegionId(e.target.value);
+                    setCitySelect('');
+                    setOtherCity('');
+                  }}
+                >
+                  <option value="">Select province</option>
+                  {PAKISTAN_REGIONS.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
               <Field label="City" required error={fieldErrors['shippingAddress.city']?.[0]}>
-                <Input value={addr.city} onChange={(e) => setField('city', e.target.value)} />
+                <Select
+                  value={citySelect}
+                  onChange={(e) => {
+                    setCitySelect(e.target.value);
+                    setOtherCity('');
+                  }}
+                  disabled={!region}
+                >
+                  <option value="">{region ? 'Select city' : 'Select a province first'}</option>
+                  {region?.cities.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                  {region ? <option value={OTHER_CITY}>Other (type your city)</option> : null}
+                </Select>
               </Field>
-              <Field label="State / region (optional)">
-                <Input value={addr.state} onChange={(e) => setField('state', e.target.value)} />
-              </Field>
+              {citySelect === OTHER_CITY ? (
+                <div className="col-span-2">
+                  <Field label="City name" required>
+                    <Input value={otherCity} onChange={(e) => setOtherCity(e.target.value)} />
+                  </Field>
+                </div>
+              ) : null}
               <Field
                 label="Postal code (optional)"
                 error={fieldErrors['shippingAddress.postalCode']?.[0]}
@@ -138,38 +180,6 @@ export function CheckoutForm({
                 <Input value="Pakistan" disabled readOnly />
               </Field>
             </div>
-          </CardBody>
-        </Card>
-
-        <Card>
-          <CardBody className="space-y-3">
-            <h2 className="text-sm font-semibold">Delivery method</h2>
-            {rates.map((r) => (
-              <label
-                key={r.id}
-                className={cn(
-                  'flex cursor-pointer items-center justify-between rounded-card border px-4 py-3 text-sm',
-                  r.id === rateId ? 'border-brand-500 bg-brand-50' : 'border-paper-line',
-                )}
-              >
-                <span className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="rate"
-                    checked={r.id === rateId}
-                    onChange={() => setRateId(r.id)}
-                    className="accent-brand-500"
-                  />
-                  {r.name}
-                  {r.minOrderForFree !== null ? (
-                    <span className="text-xs text-ink-muted">
-                      · free over {formatMoney(r.minOrderForFree)}
-                    </span>
-                  ) : null}
-                </span>
-                <span className="font-medium">{formatMoney(r.price)}</span>
-              </label>
-            ))}
           </CardBody>
         </Card>
 
@@ -191,13 +201,7 @@ export function CheckoutForm({
                 {formatMoney(quote?.subtotal ?? cart.subtotal)}
               </Row>
               <Row label="Shipping">
-                {quote
-                  ? quote.shippingFree
-                    ? 'Free'
-                    : formatMoney(quote.shipping)
-                  : rate
-                    ? formatMoney(rate.price)
-                    : '—'}
+                {quote ? (quote.shippingFree ? 'Free' : formatMoney(quote.shipping)) : '—'}
               </Row>
               {quote && quote.tax > 0 ? (
                 <Row label={quote.taxLabel}>{formatMoney(quote.tax)}</Row>
@@ -217,7 +221,7 @@ export function CheckoutForm({
               </p>
             ) : null}
 
-            <Button className="w-full" onClick={submit} disabled={pending || !rateId}>
+            <Button className="w-full" onClick={submit} disabled={pending || !quote}>
               {pending ? 'Processing…' : 'Place order'}
             </Button>
             <Link

@@ -2,19 +2,19 @@ import { z } from 'zod';
 import { shippingAddressSchema } from './common';
 
 export const quoteRequestSchema = z.object({
-  shippingRateId: z.string().cuid(),
+  city: z.string().min(1).max(120),
 });
 export type QuoteRequest = z.infer<typeof quoteRequestSchema>;
 
 /**
- * The client NEVER sends prices. It sends contact + address + the chosen
- * shipping rate + payment method; the server recomputes every amount from
- * current variant prices and the cart cookie.
+ * The client NEVER sends prices. It sends contact + address + payment method;
+ * the server recomputes every amount from current variant prices, the cart
+ * cookie, and the shipping city (free for Rawalpindi/Islamabad, otherwise the
+ * admin-configured rate).
  */
 export const checkoutSchema = z.object({
   email: z.string().email().max(254).toLowerCase().trim(),
   shippingAddress: shippingAddressSchema,
-  shippingRateId: z.string().cuid(),
   paymentMethod: z.enum(['stripe', 'cod']),
 });
 export type CheckoutInput = z.infer<typeof checkoutSchema>;

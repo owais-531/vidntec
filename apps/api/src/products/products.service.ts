@@ -101,6 +101,7 @@ export class ProductsService {
           customizationNameEnabled: input.customizationNameEnabled,
           customizationColorEnabled: input.customizationColorEnabled,
           customizationColorOptions: input.customizationColorOptions as Prisma.InputJsonValue,
+          specs: input.specs as Prisma.InputJsonValue,
           ...(input.categoryId ? { category: { connect: { id: input.categoryId } } } : {}),
           variants: { create: input.variants },
         },
@@ -114,7 +115,7 @@ export class ProductsService {
 
   async update(id: string, input: UpdateProductInput): Promise<AdminProduct> {
     await this.ensureExists(id);
-    const { categoryId, customizationColorOptions, ...rest } = input;
+    const { categoryId, customizationColorOptions, specs, ...rest } = input;
     const data: Prisma.ProductUpdateInput = { ...rest };
     if (input.slug) data.slug = await this.uniqueSlug(input.slug, id);
     if (data.description !== undefined) {
@@ -126,6 +127,9 @@ export class ProductsService {
     }
     if (customizationColorOptions !== undefined) {
       data.customizationColorOptions = customizationColorOptions as Prisma.InputJsonValue;
+    }
+    if (specs !== undefined) {
+      data.specs = specs as Prisma.InputJsonValue;
     }
 
     try {

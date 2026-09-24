@@ -18,4 +18,5 @@ export * from './datetime';
 export * from './slug';
 export * from './order-number';
 export * from './http';
+export * from './pakistan-regions';
 export * from './schemas';

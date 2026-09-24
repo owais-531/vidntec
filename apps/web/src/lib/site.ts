@@ -18,6 +18,10 @@ export const siteConfig = {
   currency: 'PKR',
 } as const;
 
+/** Canonical support inbox. Still hardcoded in a few older pages (footer,
+ *  policy pages) — new code should use this instead of adding another copy. */
+export const SUPPORT_EMAIL = 'info@vidntec.com';
+
 /** Build an absolute URL from a site-relative path. */
 export function absoluteUrl(path = '/'): string {
   return `${SITE_URL}${path.startsWith('/') ? path : `/${path}`}`;

@@ -20,6 +20,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
 import { OrdersModule } from './orders/orders.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { RefundRequestsModule } from './refund-requests/refund-requests.module';
+import { ChatModule } from './chat/chat.module';
 import { AllExceptionsFilter } from './common/all-exceptions.filter';
 
 @Module({
@@ -44,6 +45,7 @@ import { AllExceptionsFilter } from './common/all-exceptions.filter';
     OrdersModule,
     ReviewsModule,
     RefundRequestsModule,
+    ChatModule,
     // Feature modules land here per milestone:
     // admin Shipping/Settings CRUD (M8)
   ],

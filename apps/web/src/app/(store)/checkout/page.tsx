@@ -28,7 +28,11 @@ export default async function CheckoutPage() {
   return (
     <div>
       <SectionHeading title="Checkout" />
-      <CheckoutForm cart={cart} rates={rates} defaultEmail={user?.email ?? ''} />
+      <p className="mb-5 rounded-card bg-brand-50 px-3 py-2 text-xs text-brand-700">
+        🚚 Free delivery within Rawalpindi &amp; Islamabad · All orders delivered within
+        48 hours.
+      </p>
+      <CheckoutForm cart={cart} defaultEmail={user?.email ?? ''} />
     </div>
   );
 }

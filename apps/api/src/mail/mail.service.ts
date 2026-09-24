@@ -18,7 +18,7 @@ const SUPPORT_EMAIL = 'info@vidntec.com';
 
 /** Owner's personal inbox — CC'd on every order-confirmation email so new
  *  orders are seen in real time, not just via the admin dashboard. */
-const ORDER_ALERT_EMAIL = 'muaznasir467@gmail.com';
+const ORDER_ALERT_EMAIL = 'saadzulfi6851@gmail.com';
 
 interface Line {
   titleSnapshot: string;

@@ -57,24 +57,20 @@ export default async function HomePage() {
           and we print it fresh.
         </p>
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+          <a
+            href={whatsappUrl('Hello, I want to place a custom order')}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={buttonClasses('secondary', 'md', 'w-full !text-brand-600 sm:w-auto')}
+          >
+            Place custom order
+          </a>
           <Link
             href="/products"
             className={buttonClasses('secondary', 'md', 'w-full !text-brand-600 sm:w-auto')}
           >
             Shop the catalog
           </Link>
-          <a
-            href={whatsappUrl('Hello, I want to place a custom order')}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={buttonClasses(
-              'secondary',
-              'md',
-              'w-full !border-white/60 !bg-transparent !text-white hover:!bg-white/10 sm:w-auto',
-            )}
-          >
-            Place custom order
-          </a>
         </div>
       </section>
 
@@ -84,6 +80,13 @@ export default async function HomePage() {
         <section>
           <SectionHeading title="Trending" href="/products" linkLabel="Shop all" />
           <ProductGrid products={trending.items} />
+        </section>
+      ) : null}
+
+      {onSale.items.length > 0 ? (
+        <section>
+          <SectionHeading title="On sale" href="/products" linkLabel="Shop all" />
+          <ProductGrid products={onSale.items} />
         </section>
       ) : null}
 
@@ -100,13 +103,6 @@ export default async function HomePage() {
           </Link>
         </div>
       </section>
-
-      {onSale.items.length > 0 ? (
-        <section>
-          <SectionHeading title="On sale" href="/products" linkLabel="Shop all" />
-          <ProductGrid products={onSale.items} />
-        </section>
-      ) : null}
     </div>
   );
 }

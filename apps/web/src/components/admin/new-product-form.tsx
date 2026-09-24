@@ -7,9 +7,11 @@ import {
   type AdminCategory,
   type CreateProductInput,
   type CustomizationColorOption,
+  type ProductSpec,
 } from '@vidntec/shared';
 import { createProductAction } from '@/lib/actions/catalog';
 import { CustomizationFields } from '@/components/admin/customization-fields';
+import { SpecFields } from '@/components/admin/spec-fields';
 import { inputToCents } from '@/lib/money-input';
 import { Card, CardBody } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -47,6 +49,7 @@ export function NewProductForm({ categories }: { categories: AdminCategory[] }) 
   const [customizationColorOptions, setCustomizationColorOptions] = useState<
     CustomizationColorOption[]
   >([]);
+  const [specs, setSpecs] = useState<ProductSpec[]>([]);
 
   const setRow = (i: number, patch: Partial<VariantRow>) =>
     setRows((r) => r.map((row, idx) => (idx === i ? { ...row, ...patch } : row)));
@@ -88,6 +91,10 @@ export function NewProductForm({ categories }: { categories: AdminCategory[] }) 
       return;
     }
 
+    const cleanSpecs = specs
+      .map((s) => ({ label: s.label.trim(), value: s.value.trim() }))
+      .filter((s) => s.label && s.value);
+
     const input: CreateProductInput = {
       title: title.trim(),
       description: description.trim(),
@@ -97,6 +104,7 @@ export function NewProductForm({ categories }: { categories: AdminCategory[] }) 
       customizationNameEnabled,
       customizationColorEnabled,
       customizationColorOptions: cleanColorOptions,
+      specs: cleanSpecs,
       variants,
       ...(slug.trim() ? { slug: slug.trim() } : {}),
     };
@@ -189,6 +197,12 @@ export function NewProductForm({ categories }: { categories: AdminCategory[] }) 
             colorOptions={customizationColorOptions}
             onColorOptionsChange={setCustomizationColorOptions}
           />
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardBody>
+          <SpecFields specs={specs} onSpecsChange={setSpecs} />
         </CardBody>
       </Card>
 

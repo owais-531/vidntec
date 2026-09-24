@@ -158,6 +158,7 @@ export default async function ProductDetailPage({
         customizationNameEnabled={product.customizationNameEnabled}
         customizationColorEnabled={product.customizationColorEnabled}
         customizationColorOptions={product.customizationColorOptions}
+        specs={product.specs}
         productUrl={absoluteUrl(path)}
       />
 

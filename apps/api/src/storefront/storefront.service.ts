@@ -6,7 +6,7 @@ import type {
 } from '@vidntec/shared';
 import { Prisma } from '@vidntec/shared/prisma';
 import { PrismaService } from '../prisma/prisma.service';
-import { toColorOptions } from '../products/products.mapper';
+import { toColorOptions, toProductSpecs } from '../products/products.mapper';
 
 const ACTIVE = { status: 'active' } as const satisfies Prisma.ProductWhereInput;
 
@@ -161,6 +161,7 @@ export class StorefrontService {
       customizationNameEnabled: product.customizationNameEnabled,
       customizationColorEnabled: product.customizationColorEnabled,
       customizationColorOptions: toColorOptions(product.customizationColorOptions),
+      specs: toProductSpecs(product.specs),
       images: [...product.images]
         .sort((a, b) => a.position - b.position)
         .map((i) => ({

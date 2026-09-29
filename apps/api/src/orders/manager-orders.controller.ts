@@ -20,12 +20,12 @@ import {
   type SetOrderStatusInput,
 } from '@vidntec/shared';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
-import { AdminGuard } from '../auth/guards/admin.guard';
+import { ManagerGuard } from '../auth/guards/manager.guard';
 import { OrdersService } from './orders.service';
 
-@UseGuards(AdminGuard)
-@Controller('admin/orders')
-export class AdminOrdersController {
+@UseGuards(ManagerGuard)
+@Controller('manager/orders')
+export class ManagerOrdersController {
   constructor(private readonly orders: OrdersService) {}
 
   @Get()

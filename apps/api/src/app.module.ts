@@ -21,6 +21,7 @@ import { OrdersModule } from './orders/orders.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { RefundRequestsModule } from './refund-requests/refund-requests.module';
 import { ChatModule } from './chat/chat.module';
+import { ManagerModule } from './manager/manager.module';
 import { AllExceptionsFilter } from './common/all-exceptions.filter';
 
 @Module({
@@ -46,6 +47,7 @@ import { AllExceptionsFilter } from './common/all-exceptions.filter';
     ReviewsModule,
     RefundRequestsModule,
     ChatModule,
+    ManagerModule,
     // Feature modules land here per milestone:
     // admin Shipping/Settings CRUD (M8)
   ],

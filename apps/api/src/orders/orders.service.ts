@@ -23,6 +23,27 @@ import {
   type OrderWithItems,
 } from './orders.mapper';
 
+const STAGE_RANK: Record<string, number> = { pending: 0, confirmed: 1, fulfilled: 2, delivered: 3 };
+
+/**
+ * Timestamps to write when an order is manually moved to `status`: stamp the
+ * stage it enters and clear every LATER stage (moving back un-happens them).
+ * cancelled/refunded touch nothing — they keep the record of how far the order
+ * got before it ended.
+ */
+function stageTimestamps(
+  status: string,
+  now: Date,
+): { confirmedAt?: Date | null; shippedAt?: Date | null; deliveredAt?: Date | null } {
+  const rank = STAGE_RANK[status];
+  if (rank === undefined) return {};
+  return {
+    ...(rank < 1 ? { confirmedAt: null } : rank === 1 ? { confirmedAt: now } : {}),
+    ...(rank < 2 ? { shippedAt: null } : rank === 2 ? { shippedAt: now } : {}),
+    ...(rank < 3 ? { deliveredAt: null } : { deliveredAt: now }),
+  };
+}
+
 @Injectable()
 export class OrdersService {
   private readonly logger = new Logger(OrdersService.name);
@@ -147,7 +168,7 @@ export class OrdersService {
       } else if (!wasHeld && nowHeld) {
         await this.deduct(tx, order.items);
       }
-      await tx.order.update({ where: { id }, data: { status } });
+      await tx.order.update({ where: { id }, data: { status, ...stageTimestamps(status, new Date()) } });
       const fresh = await tx.order.findUnique({ where: { id }, include: { items: true } });
       return toOrderDetail(fresh!);
     });
@@ -162,7 +183,7 @@ export class OrdersService {
     if (order.status !== 'pending') {
       throw new ConflictException(`Cannot confirm a ${order.status} order`);
     }
-    return this.updateAndReturn(id, { status: 'confirmed' });
+    return this.updateAndReturn(id, { status: 'confirmed', confirmedAt: new Date() });
   }
 
   async fulfill(id: string, trackingNumber: string): Promise<OrderDetail> {
@@ -175,7 +196,11 @@ export class OrdersService {
       );
     }
 
-    const updated = await this.updateAndReturn(id, { status: 'fulfilled', trackingNumber });
+    const updated = await this.updateAndReturn(id, {
+      status: 'fulfilled',
+      trackingNumber,
+      shippedAt: new Date(),
+    });
 
     await this.mail.sendShippingNotification({
       to: order.email,
@@ -196,7 +221,7 @@ export class OrdersService {
           : `Cannot mark a ${order.status} order delivered`,
       );
     }
-    return this.updateAndReturn(id, { status: 'delivered' });
+    return this.updateAndReturn(id, { status: 'delivered', deliveredAt: new Date() });
   }
 
   /**
@@ -259,7 +284,13 @@ export class OrdersService {
 
   private async updateAndReturn(
     id: string,
-    data: { status: OrderWithItems['status']; trackingNumber?: string },
+    data: {
+      status: OrderWithItems['status'];
+      trackingNumber?: string;
+      confirmedAt?: Date;
+      shippedAt?: Date;
+      deliveredAt?: Date;
+    },
   ): Promise<OrderDetail> {
     const updated = await this.prisma.order.update({
       where: { id },

@@ -57,9 +57,11 @@ async function foldGuestCart(store: CookieStore, authCookies: ParsedCookie[]): P
   }
 }
 
-/** `next` is safe to redirect to only if it's a same-site path that isn't the admin area. */
+/** `next` is safe to redirect to only if it's a same-site path outside the staff areas. */
 function safeNext(next: string): string {
-  return next && next.startsWith('/') && !next.startsWith('/admin') ? next : '/';
+  return next && next.startsWith('/') && !next.startsWith('/admin') && !next.startsWith('/manager')
+    ? next
+    : '/';
 }
 
 export async function loginAction(_prev: LoginState, formData: FormData): Promise<LoginState> {
@@ -97,6 +99,9 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
   const next = String(formData.get('next') ?? '');
   if (user.role === 'admin') {
     redirect(next.startsWith('/admin') ? next : '/admin/products');
+  }
+  if (user.role === 'manager') {
+    redirect(next.startsWith('/manager') ? next : '/manager');
   }
   redirect(safeNext(next));
 }

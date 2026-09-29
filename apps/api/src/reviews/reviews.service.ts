@@ -126,7 +126,7 @@ export class ReviewsService {
         where,
         include: {
           images: true,
-          product: { select: { title: true } },
+          product: { select: { title: true, slug: true } },
           user: { select: { email: true } },
         },
         orderBy: { createdAt: 'desc' },
@@ -140,6 +140,7 @@ export class ReviewsService {
       ...toPublicReview(r),
       productId: r.productId,
       productTitle: r.product.title,
+      productSlug: r.product.slug,
       userId: r.userId,
       userEmail: r.user.email,
     }));

@@ -39,3 +39,4 @@ export async function requireRole(role: Role): Promise<PublicUser> {
 }
 
 export const requireAdmin = () => requireRole('admin');
+export const requireManager = () => requireRole('manager');

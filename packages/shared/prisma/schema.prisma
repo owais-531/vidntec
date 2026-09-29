@@ -21,6 +21,7 @@ datasource db {
 enum Role {
   customer
   admin
+  manager
 }
 
 enum ProductStatus {
@@ -282,6 +283,10 @@ model Order {
   stripeSessionId       String?       @unique
   shippingAddress       Json
   trackingNumber        String?
+  // Stage timestamps, set by the order actions (null until that stage is reached).
+  confirmedAt           DateTime?
+  shippedAt             DateTime? // status `fulfilled`
+  deliveredAt           DateTime?
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
 

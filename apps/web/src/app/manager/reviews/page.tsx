@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { formatOrderDateTime } from '@vidntec/shared';
-import { listReviewsAdmin } from '@/lib/admin/queries';
+import { listReviewsAdmin } from '@/lib/manager/queries';
 import { PageHeader } from '@/components/admin/page-header';
-import { DeleteReviewButton } from '@/components/admin/delete-review-button';
+import { DeleteReviewButton } from '@/components/manager/delete-review-button';
 import { Card } from '@/components/ui/card';
 import { StarRating } from '@/components/store/star-rating';
 import { buttonClasses } from '@/components/ui/button';
@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: 'Reviews' };
 
 const RATINGS = [5, 4, 3, 2, 1] as const;
 
-export default async function AdminReviewsPage({
+export default async function ManagerReviewsPage({
   searchParams,
 }: {
   searchParams: Promise<{ rating?: string; page?: string }>;
@@ -32,7 +32,7 @@ export default async function AdminReviewsPage({
     if (merged.rating) usp.set('rating', merged.rating);
     if (merged.page && merged.page !== '1') usp.set('page', merged.page);
     const qs = usp.toString();
-    return `/admin/reviews${qs ? `?${qs}` : ''}`;
+    return `/manager/reviews${qs ? `?${qs}` : ''}`;
   };
 
   return (
@@ -41,7 +41,7 @@ export default async function AdminReviewsPage({
 
       <div className="mb-4 flex flex-wrap gap-2 text-xs">
         <Link
-          href="/admin/reviews"
+          href="/manager/reviews"
           className={`rounded-card px-3 py-1.5 ${!rating ? 'bg-brand-50 text-brand-600' : 'bg-white text-ink-soft'}`}
         >
           All
@@ -84,7 +84,9 @@ export default async function AdminReviewsPage({
                 >
                   <td className="px-4 py-3">
                     <Link
-                      href={`/admin/products/${r.productId}`}
+                      href={`/products/${r.productSlug}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="font-medium text-ink hover:text-brand-600"
                     >
                       {r.productTitle}

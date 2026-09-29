@@ -150,7 +150,7 @@ export function OrderActions({ order }: { order: OrderDetail }) {
           <span className="text-xs text-ink-muted">
             Deleting removes the record only — stock isn’t adjusted.
           </span>
-          <DeleteOrderButton orderId={order.id} redirectTo="/admin/orders">
+          <DeleteOrderButton orderId={order.id} redirectTo="/manager/orders">
             Delete order
           </DeleteOrderButton>
         </div>

@@ -2,10 +2,10 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { orderNumber } from '@vidntec/shared';
-import { getAdminOrder } from '@/lib/admin/queries';
+import { getManagerOrder } from '@/lib/manager/queries';
 import { PageHeader } from '@/components/admin/page-header';
 import { OrderView } from '@/components/order-view';
-import { OrderActions } from '@/components/admin/order-actions';
+import { OrderActions } from '@/components/manager/order-actions';
 
 export async function generateMetadata({
   params,
@@ -16,13 +16,13 @@ export async function generateMetadata({
   return { title: `Order #${orderNumber(id)}` };
 }
 
-export default async function AdminOrderPage({
+export default async function ManagerOrderPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const order = await getAdminOrder(id);
+  const order = await getManagerOrder(id);
   if (!order) notFound();
 
   return (
@@ -31,7 +31,7 @@ export default async function AdminOrderPage({
         title={`Order #${orderNumber(order.id)}`}
         subtitle={order.email}
         action={
-          <Link href="/admin/orders" className="text-xs text-ink-muted hover:text-ink">
+          <Link href="/manager/orders" className="text-xs text-ink-muted hover:text-ink">
             ← Back to orders
           </Link>
         }

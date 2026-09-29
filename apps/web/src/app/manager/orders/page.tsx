@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ORDER_STATUSES, formatMoney, formatOrderDateTime, orderNumber } from '@vidntec/shared';
-import { listOrders } from '@/lib/admin/queries';
+import { listOrders } from '@/lib/manager/queries';
 import { PageHeader } from '@/components/admin/page-header';
-import { DeleteOrderButton } from '@/components/admin/delete-order-button';
+import { DeleteOrderButton } from '@/components/manager/delete-order-button';
 import { Card } from '@/components/ui/card';
 import { OrderStatusBadge } from '@/components/ui/order-status-badge';
 import { buttonClasses } from '@/components/ui/button';
@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: 'Orders' };
 
 const STATUSES = new Set<string>(ORDER_STATUSES);
 
-export default async function AdminOrdersPage({
+export default async function ManagerOrdersPage({
   searchParams,
 }: {
   searchParams: Promise<{ status?: string; page?: string }>;
@@ -30,16 +30,24 @@ export default async function AdminOrdersPage({
     if (merged.status) usp.set('status', merged.status);
     if (merged.page && merged.page !== '1') usp.set('page', merged.page);
     const qs = usp.toString();
-    return `/admin/orders${qs ? `?${qs}` : ''}`;
+    return `/manager/orders${qs ? `?${qs}` : ''}`;
   };
 
   return (
     <>
-      <PageHeader title="Orders" subtitle={`${total} order${total === 1 ? '' : 's'}`} />
+      <PageHeader
+        title="Orders"
+        subtitle={`${total} order${total === 1 ? '' : 's'}`}
+        action={
+          <Link href="/manager/exports" className="text-xs text-ink-muted hover:text-ink">
+            Export CSV →
+          </Link>
+        }
+      />
 
       <div className="mb-4 flex flex-wrap gap-2 text-xs">
         <Link
-          href="/admin/orders"
+          href="/manager/orders"
           className={`rounded-card px-3 py-1.5 ${!status ? 'bg-brand-50 text-brand-600' : 'bg-white text-ink-soft'}`}
         >
           All
@@ -83,7 +91,7 @@ export default async function AdminOrdersPage({
                 >
                   <td className="px-4 py-3">
                     <Link
-                      href={`/admin/orders/${o.id}`}
+                      href={`/manager/orders/${o.id}`}
                       className="font-medium text-ink hover:text-brand-600"
                     >
                       #{orderNumber(o.id)}

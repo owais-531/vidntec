@@ -4,14 +4,26 @@ import { verifyAccessToken } from './lib/jwt';
 import { parseAuthSetCookies } from './lib/set-cookie';
 
 /**
- * The single token-refresh point for /admin. If the access token is missing or
+ * The single token-refresh point for /admin and /manager. If the access token is missing or
  * expired it calls the API to rotate, then propagates the new cookies to BOTH:
  *   - the downstream request (so this render / server action sees a valid token
  *     and never triggers a second, conflicting refresh), and
  *   - the response (so the browser persists the rotated pair).
  *
- * The NestJS AdminGuard still re-checks role on every admin API call.
+ * The NestJS AdminGuard / ManagerGuard still re-check role on every API call.
+ * Each area accepts exactly one role: /admin → admin, /manager → manager.
  */
+type StaffRole = 'admin' | 'manager';
+
+const requiredRole = (pathname: string): StaffRole =>
+  pathname === '/manager' || pathname.startsWith('/manager/') ? 'manager' : 'admin';
+
+/** A signed-in user with the wrong role goes to their own area (or the store). */
+function wrongRoleRedirect(req: NextRequest, role: string): NextResponse {
+  const home = role === 'admin' ? '/admin' : role === 'manager' ? '/manager' : '/';
+  return NextResponse.redirect(new URL(home, req.url));
+}
+
 export async function middleware(req: NextRequest): Promise<NextResponse> {
   const toLogin = () => {
     const url = new URL('/login', req.url);
@@ -22,7 +34,9 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
   const accessToken = req.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
   const claims = await verifyAccessToken(accessToken);
   if (claims) {
-    return claims.role === 'admin' ? NextResponse.next() : NextResponse.redirect(new URL('/', req.url));
+    return claims.role === requiredRole(req.nextUrl.pathname)
+      ? NextResponse.next()
+      : wrongRoleRedirect(req, claims.role);
   }
 
   const refreshToken = req.cookies.get(REFRESH_TOKEN_COOKIE)?.value;
@@ -44,7 +58,9 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 
   const refreshedClaims = await verifyAccessToken(newAccess);
   if (!refreshedClaims) return toLogin();
-  if (refreshedClaims.role !== 'admin') return NextResponse.redirect(new URL('/', req.url));
+  if (refreshedClaims.role !== requiredRole(req.nextUrl.pathname)) {
+    return wrongRoleRedirect(req, refreshedClaims.role);
+  }
 
   // Forward the rotated cookies to the render / action that follows.
   const forwardedCookie = [
@@ -69,5 +85,5 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
 }
 
 export const config = {
-  matcher: ['/admin/:path*'],
+  matcher: ['/admin/:path*', '/manager/:path*'],
 };

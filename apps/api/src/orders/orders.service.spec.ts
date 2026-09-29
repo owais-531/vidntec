@@ -75,6 +75,12 @@ describe('OrdersService transitions', () => {
     ctx.prisma.order.findUnique.mockResolvedValue(order({ status: 'fulfilled' }));
     const res = await ctx.service.markDelivered('o1');
     expect(res.status).toBe('delivered');
+    // The delivery moment is recorded for the manager's delivery-time export.
+    expect(ctx.prisma.order.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: 'delivered', deliveredAt: expect.any(Date) }),
+      }),
+    );
   });
 
   it('fulfill requires a confirmed order and sends the shipping email', async () => {
@@ -198,6 +204,76 @@ describe('OrdersService.setStatus (manual override)', () => {
 
     await ctx.service.setStatus('o1', 'delivered');
     expect(ctx.prisma.variant.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('manual override stamps deliveredAt when entering delivered and clears it when leaving', async () => {
+    const ctx = make();
+    ctx.prisma.order.findUnique
+      .mockResolvedValueOnce(order({ status: 'fulfilled' }))
+      .mockResolvedValueOnce(order({ status: 'delivered' }));
+    ctx.prisma.order.update.mockResolvedValue(order({ status: 'delivered' }));
+    await ctx.service.setStatus('o1', 'delivered');
+    expect(ctx.prisma.order.update).toHaveBeenLastCalledWith(
+      expect.objectContaining({ data: { status: 'delivered', deliveredAt: expect.any(Date) } }),
+    );
+
+    ctx.prisma.order.findUnique
+      .mockResolvedValueOnce(order({ status: 'delivered' }))
+      .mockResolvedValueOnce(order({ status: 'fulfilled' }));
+    ctx.prisma.order.update.mockResolvedValue(order({ status: 'fulfilled' }));
+    await ctx.service.setStatus('o1', 'fulfilled');
+    expect(ctx.prisma.order.update).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        data: { status: 'fulfilled', shippedAt: expect.any(Date), deliveredAt: null },
+      }),
+    );
+  });
+
+  it('manual override: back to pending clears every stage; cancelled/refunded keep them', async () => {
+    const ctx = make();
+    ctx.prisma.order.findUnique
+      .mockResolvedValueOnce(order({ status: 'delivered' }))
+      .mockResolvedValueOnce(order({ status: 'pending' }));
+    ctx.prisma.order.update.mockResolvedValue(order({ status: 'pending' }));
+    await ctx.service.setStatus('o1', 'pending');
+    expect(ctx.prisma.order.update).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        data: { status: 'pending', confirmedAt: null, shippedAt: null, deliveredAt: null },
+      }),
+    );
+
+    ctx.prisma.order.findUnique
+      .mockResolvedValueOnce(order({ status: 'delivered' }))
+      .mockResolvedValueOnce(order({ status: 'refunded' }));
+    ctx.prisma.order.update.mockResolvedValue(order({ status: 'refunded' }));
+    await ctx.service.setStatus('o1', 'refunded');
+    // No timestamp keys: the order keeps its record of how far it got.
+    expect(ctx.prisma.order.update).toHaveBeenLastCalledWith(
+      expect.objectContaining({ data: { status: 'refunded' } }),
+    );
+  });
+
+  it('confirm and fulfill record their own timestamps', async () => {
+    const ctx = make();
+    ctx.prisma.order.update.mockImplementation(async ({ data }: { data: Record<string, unknown> }) => ({
+      ...order(),
+      ...data,
+    }));
+    ctx.prisma.order.findUnique.mockResolvedValue(order({ status: 'pending' }));
+    await ctx.service.confirmOrder('o1');
+    expect(ctx.prisma.order.update).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: 'confirmed', confirmedAt: expect.any(Date) }),
+      }),
+    );
+
+    ctx.prisma.order.findUnique.mockResolvedValue(order({ status: 'confirmed' }));
+    await ctx.service.fulfill('o1', 'TRK9');
+    expect(ctx.prisma.order.update).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: 'fulfilled', trackingNumber: 'TRK9', shippedAt: expect.any(Date) }),
+      }),
+    );
   });
 
   it('is a no-op when the status is unchanged', async () => {

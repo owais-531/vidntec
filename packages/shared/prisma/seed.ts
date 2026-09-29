@@ -10,9 +10,13 @@ const prisma = new PrismaClient();
  * The admin user below is the ONE sanctioned way an `admin` row is created.
  * In every other path (signup, account, admin UI) users are `customer` only;
  * production admins are promoted by hand directly in the production database.
+ * The sample `manager` below (orders/reviews/dashboard) follows the same rule:
+ * in production, promote by hand: UPDATE users SET role='manager' WHERE email='…';
  */
 const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL ?? 'admin@gmail.com';
 const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD ?? 'admin123';
+const MANAGER_EMAIL = process.env.SEED_MANAGER_EMAIL ?? 'manager@gmail.com';
+const MANAGER_PASSWORD = process.env.SEED_MANAGER_PASSWORD ?? 'manager123';
 
 async function main() {
   // 1. Store settings (single row, id = 1)
@@ -43,6 +47,20 @@ async function main() {
     },
   });
   console.log(`admin user: ${admin.email} (password: ${ADMIN_PASSWORD})`);
+
+  // 2b. Sample manager (sanctioned exception, dev only).
+  const managerHash = await hashPassword(MANAGER_PASSWORD);
+  const manager = await prisma.user.upsert({
+    where: { email: MANAGER_EMAIL },
+    update: { role: 'manager', passwordHash: managerHash, emailVerifiedAt: new Date() },
+    create: {
+      email: MANAGER_EMAIL,
+      passwordHash: managerHash,
+      role: 'manager',
+      emailVerifiedAt: new Date(),
+    },
+  });
+  console.log(`manager user: ${manager.email} (password: ${MANAGER_PASSWORD})`);
 
   // 3. A sample customer
   await prisma.user.upsert({

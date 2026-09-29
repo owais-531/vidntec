@@ -3,7 +3,7 @@
 import { revalidatePath, revalidateTag } from 'next/cache';
 import type { PublicReview, ReviewInput, UploadSignatureResponse } from '@vidntec/shared';
 import { apiFetch } from '../api';
-import { requireAdmin, requireUser } from '../auth';
+import { requireManager, requireUser } from '../auth';
 import { runAction, type ActionResult } from './result';
 
 /** Create or replace the signed-in customer's review for this product. */
@@ -52,18 +52,18 @@ export async function deleteMyReviewAction(
   return res;
 }
 
-/** Admin: permanently delete a review, for any reason. */
+/** Manager: permanently delete a review, for any reason. */
 export async function deleteReviewAction(
   id: string,
   productSlug?: string,
 ): Promise<ActionResult> {
-  await requireAdmin();
+  await requireManager();
   const res = await runAction(() =>
-    apiFetch<undefined>(`/admin/reviews/${id}`, { method: 'DELETE' }),
+    apiFetch<undefined>(`/manager/reviews/${id}`, { method: 'DELETE' }),
   );
   if (res.ok) {
     revalidateTag('products');
-    revalidatePath('/admin/reviews');
+    revalidatePath('/manager/reviews');
     if (productSlug) revalidatePath(`/products/${productSlug}`);
   }
   return res;

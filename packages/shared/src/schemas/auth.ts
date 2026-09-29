@@ -1,9 +1,10 @@
 import { z } from 'zod';
+import { ROLES } from '../constants';
 
 /**
  * NOTE: there is deliberately NO `role` field accepted anywhere in these
  * schemas. Every signup is `role = 'customer'`, enforced server-side and at the
- * DB level. The `admin` role is granted only manually in the database.
+ * DB level. The `admin` and `manager` roles are granted only manually in the database.
  */
 
 const passwordSchema = z
@@ -49,7 +50,7 @@ export type ResendOtpInput = z.infer<typeof resendOtpSchema>;
 export const publicUserSchema = z.object({
   id: z.string(),
   email: z.string().email(),
-  role: z.enum(['customer', 'admin']),
+  role: z.enum(ROLES),
   createdAt: z.string().datetime(),
 });
 export type PublicUser = z.infer<typeof publicUserSchema>;
@@ -58,7 +59,7 @@ export type PublicUser = z.infer<typeof publicUserSchema>;
 export const accessTokenClaimsSchema = z.object({
   sub: z.string(),
   email: z.string().email(),
-  role: z.enum(['customer', 'admin']),
+  role: z.enum(ROLES),
   type: z.literal('access'),
 });
 export type AccessTokenClaims = z.infer<typeof accessTokenClaimsSchema>;

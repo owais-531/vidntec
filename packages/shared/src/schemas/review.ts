@@ -63,6 +63,7 @@ export type PublicReview = z.infer<typeof publicReviewSchema>;
 export const adminReviewSchema = publicReviewSchema.extend({
   productId: z.string(),
   productTitle: z.string(),
+  productSlug: z.string(),
   userId: z.string(),
   userEmail: z.string(),
 });

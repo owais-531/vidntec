@@ -1,6 +1,6 @@
 /** Shared, non-secret constants for the FE/BE contract. */
 
-export const ROLES = ['customer', 'admin'] as const;
+export const ROLES = ['customer', 'admin', 'manager'] as const;
 export type Role = (typeof ROLES)[number];
 
 export const PRODUCT_STATUSES = ['draft', 'active'] as const;

@@ -153,6 +153,7 @@ export default async function ProductDetailPage({
       <ProductViewer
         title={product.title}
         description={product.description}
+        scope={product.scope}
         images={product.images}
         variants={product.variants}
         customizationNameEnabled={product.customizationNameEnabled}

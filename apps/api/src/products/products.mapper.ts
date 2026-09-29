@@ -49,6 +49,7 @@ export function toAdminProduct(p: ProductWithRelations): AdminProduct {
     title: p.title,
     slug: p.slug,
     description: p.description,
+    scope: p.scope,
     status: p.status,
     featured: p.featured,
     categoryId: p.categoryId,

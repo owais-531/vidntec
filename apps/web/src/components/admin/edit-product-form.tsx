@@ -16,6 +16,7 @@ import { Field, Input, Select } from '@/components/ui/field';
 import { RichTextEditor } from '@/components/admin/rich-text-editor';
 import { CustomizationFields } from '@/components/admin/customization-fields';
 import { SpecFields } from '@/components/admin/spec-fields';
+import { ScopeField } from '@/components/admin/scope-field';
 import { ConfirmButton } from '@/components/ui/confirm-button';
 import { toast } from '@/components/ui/toast';
 
@@ -24,7 +25,9 @@ function sameColorOptions(a: CustomizationColorOption[], b: CustomizationColorOp
 }
 
 function sameSpecs(a: ProductSpec[], b: ProductSpec[]): boolean {
-  return a.length === b.length && a.every((s, i) => s.label === b[i]!.label && s.value === b[i]!.value);
+  return (
+    a.length === b.length && a.every((s, i) => s.label === b[i]!.label && s.value === b[i]!.value)
+  );
 }
 
 export function EditProductForm({
@@ -41,6 +44,7 @@ export function EditProductForm({
   const [title, setTitle] = useState(product.title);
   const [slug, setSlug] = useState(product.slug);
   const [description, setDescription] = useState(product.description);
+  const [scope, setScope] = useState(product.scope);
   const [status, setStatus] = useState(product.status);
   const [featured, setFeatured] = useState(product.featured);
   const [categoryId, setCategoryId] = useState(product.categoryId ?? '');
@@ -59,6 +63,7 @@ export function EditProductForm({
     title !== product.title ||
     slug !== product.slug ||
     description !== product.description ||
+    scope !== product.scope ||
     status !== product.status ||
     featured !== product.featured ||
     categoryId !== (product.categoryId ?? '') ||
@@ -84,6 +89,7 @@ export function EditProductForm({
         title: title.trim(),
         slug: slug.trim(),
         description,
+        scope,
         status,
         featured,
         categoryId: categoryId || null,
@@ -109,6 +115,18 @@ export function EditProductForm({
         <Field label="Description" htmlFor="description" error={fieldErrors.description?.[0]}>
           <RichTextEditor id="description" value={description} onChange={setDescription} />
         </Field>
+        <ScopeField
+          value={scope}
+          onChange={setScope}
+          getDraftContext={() => ({
+            title,
+            description,
+            categoryName: categories.find((c) => c.id === categoryId)?.name,
+            specs: specs.filter((s) => s.label.trim() && s.value.trim()),
+            variantNames: product.variants.map((v) => v.name),
+          })}
+          error={fieldErrors.scope?.[0]}
+        />
         <Field label="Status" htmlFor="status">
           <Select
             id="status"
@@ -127,11 +145,7 @@ export function EditProductForm({
           htmlFor="category"
           hint="Optional — uncategorized products still appear in All products and Latest."
         >
-          <Select
-            id="category"
-            value={categoryId}
-            onChange={(e) => setCategoryId(e.target.value)}
-          >
+          <Select id="category" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
             <option value="">— No category —</option>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>

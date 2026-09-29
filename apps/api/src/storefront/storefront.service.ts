@@ -154,6 +154,7 @@ export class StorefrontService {
       title: product.title,
       slug: product.slug,
       description: product.description,
+      scope: product.scope,
       featured: product.featured,
       category: product.category
         ? { name: product.category.name, slug: product.category.slug }

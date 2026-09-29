@@ -12,6 +12,7 @@ import {
 import { createProductAction } from '@/lib/actions/catalog';
 import { CustomizationFields } from '@/components/admin/customization-fields';
 import { SpecFields } from '@/components/admin/spec-fields';
+import { ScopeField } from '@/components/admin/scope-field';
 import { inputToCents } from '@/lib/money-input';
 import { Card, CardBody } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,7 @@ export function NewProductForm({ categories }: { categories: AdminCategory[] }) 
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('');
   const [description, setDescription] = useState('');
+  const [scope, setScope] = useState('');
   const [status, setStatus] = useState<'draft' | 'active'>('draft');
   const [featured, setFeatured] = useState(false);
   const [categoryId, setCategoryId] = useState('');
@@ -98,6 +100,7 @@ export function NewProductForm({ categories }: { categories: AdminCategory[] }) 
     const input: CreateProductInput = {
       title: title.trim(),
       description: description.trim(),
+      scope: scope.trim(),
       status,
       featured,
       categoryId: categoryId || null,
@@ -144,6 +147,18 @@ export function NewProductForm({ categories }: { categories: AdminCategory[] }) 
           <Field label="Description" htmlFor="description" error={fieldErrors.description?.[0]}>
             <RichTextEditor id="description" value={description} onChange={setDescription} />
           </Field>
+          <ScopeField
+            value={scope}
+            onChange={setScope}
+            getDraftContext={() => ({
+              title,
+              description,
+              categoryName: categories.find((c) => c.id === categoryId)?.name,
+              specs: specs.filter((s) => s.label.trim() && s.value.trim()),
+              variantNames: rows.map((r) => r.name),
+            })}
+            error={fieldErrors.scope?.[0]}
+          />
           <Field label="Status" htmlFor="status">
             <Select
               id="status"
@@ -210,11 +225,17 @@ export function NewProductForm({ categories }: { categories: AdminCategory[] }) 
         <CardBody className="space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold">Variants</h2>
-            <Button size="sm" variant="secondary" onClick={() => setRows((r) => [...r, emptyRow()])}>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => setRows((r) => [...r, emptyRow()])}
+            >
               + Add variant
             </Button>
           </div>
-          <div className={`${VGRID} px-1 text-xs font-medium uppercase tracking-wide text-ink-muted`}>
+          <div
+            className={`${VGRID} px-1 text-xs font-medium uppercase tracking-wide text-ink-muted`}
+          >
             <span>Name</span>
             <span>Price</span>
             <span>Was</span>

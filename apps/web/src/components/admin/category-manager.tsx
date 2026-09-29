@@ -16,7 +16,7 @@ import { ConfirmButton } from '@/components/ui/confirm-button';
 import { toast } from '@/components/ui/toast';
 
 /** Header + every row share ONE grid so the columns line up. */
-const GRID_COLS = '1.25rem minmax(7rem,1fr) 3.5rem 2.75rem 3.5rem max-content';
+const GRID_COLS = '1.25rem minmax(7rem,1fr) 3.5rem 2.75rem 3.5rem 3.5rem max-content';
 
 function ColorSwatches({
   value,
@@ -67,11 +67,13 @@ function CategoryRow({
   const [name, setName] = useState(category.name);
   const [emoji, setEmoji] = useState(category.emoji ?? '');
   const [color, setColor] = useState(category.color);
+  const [featuredOnHome, setFeaturedOnHome] = useState(category.featuredOnHome);
 
   const dirty =
     name.trim() !== category.name ||
     emoji.trim() !== (category.emoji ?? '') ||
-    color !== category.color;
+    color !== category.color ||
+    featuredOnHome !== category.featuredOnHome;
 
   const busy = pending || disabled;
   const dim = busy ? 'opacity-60' : '';
@@ -83,6 +85,7 @@ function CategoryRow({
         name: name.trim(),
         emoji: emoji.trim() || null,
         color,
+        featuredOnHome,
       });
       if (res.ok) {
         toast('Category saved');
@@ -133,6 +136,16 @@ function CategoryRow({
       >
         {emoji || 'Aa'}
       </span>
+      <span className={`flex items-center justify-center ${dim}`}>
+        <input
+          type="checkbox"
+          checked={featuredOnHome}
+          onChange={(e) => setFeaturedOnHome(e.target.checked)}
+          disabled={busy}
+          className="accent-brand-500"
+          aria-label="Feature on homepage"
+        />
+      </span>
       <span
         className={`text-center text-sm text-ink-soft ${dim}`}
         title="Assigned products"
@@ -176,6 +189,7 @@ function AddCategory() {
   const [name, setName] = useState('');
   const [emoji, setEmoji] = useState('');
   const [color, setColor] = useState<string>(CATEGORY_DEFAULT_COLOR);
+  const [featuredOnHome, setFeaturedOnHome] = useState(false);
 
   if (!open) {
     return (
@@ -190,6 +204,7 @@ function AddCategory() {
     setName('');
     setEmoji('');
     setColor(CATEGORY_DEFAULT_COLOR);
+    setFeaturedOnHome(false);
   };
 
   const add = () => {
@@ -199,6 +214,7 @@ function AddCategory() {
         name: name.trim(),
         emoji: emoji.trim() || null,
         color,
+        featuredOnHome,
       });
       if (res.ok) {
         toast('Category added');
@@ -225,6 +241,15 @@ function AddCategory() {
           className="w-16 text-center"
         />
         <ColorSwatches value={color} onChange={setColor} />
+        <label className="flex items-center gap-1.5 text-xs text-ink-soft">
+          <input
+            type="checkbox"
+            checked={featuredOnHome}
+            onChange={(e) => setFeaturedOnHome(e.target.checked)}
+            className="accent-brand-500"
+          />
+          Feature on homepage
+        </label>
       </div>
       <div className="flex gap-1">
         <Button size="sm" onClick={add} disabled={pending}>
@@ -273,6 +298,9 @@ export function CategoryManager({ categories }: { categories: AdminCategory[] })
             </span>
             <span className="text-center text-xs font-medium uppercase tracking-wide text-ink-muted">
               Tile
+            </span>
+            <span className="text-center text-xs font-medium uppercase tracking-wide text-ink-muted">
+              Home
             </span>
             <span className="text-center text-xs font-medium uppercase tracking-wide text-ink-muted">
               Items

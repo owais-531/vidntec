@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { listStorefrontProducts } from '@/lib/storefront/queries';
+import { listStorefrontCategories, listStorefrontProducts } from '@/lib/storefront/queries';
 import { SectionHeading } from '@/components/store/section-heading';
 import { ProductGrid } from '@/components/store/product-grid';
 import { JsonLd } from '@/components/seo/json-ld';
@@ -36,12 +36,22 @@ const websiteJsonLd = {
 };
 
 export default async function HomePage() {
-  const [latest, trending, onSale] = await Promise.all([
+  const categories = await listStorefrontCategories();
+  const featuredCategories = categories.filter((c) => c.featuredOnHome);
+
+  const [latest, trending, onSale, ...featuredCategoryProducts] = await Promise.all([
     listStorefrontProducts({ sort: 'newest', pageSize: 10 }),
     listStorefrontProducts({ featured: true, pageSize: 10 }),
     listStorefrontProducts({ onSale: true, pageSize: 10 }),
+    ...featuredCategories.map((c) =>
+      listStorefrontProducts({ category: c.slug, sort: 'newest', pageSize: 10 }),
+    ),
   ]);
   const { items, total } = latest;
+  const categorySections = featuredCategories.map((c, i) => ({
+    category: c,
+    products: featuredCategoryProducts[i]!.items,
+  }));
 
   return (
     <div className="space-y-10">
@@ -56,20 +66,33 @@ export default async function HomePage() {
           A curated catalog of functional and decorative prints. Pick a finish, place your order,
           and we print it fresh.
         </p>
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+        {/* 2×2 on sm+: equal 1fr columns on a fit-content grid → every button matches the widest one */}
+        <div className="mt-6 grid gap-3 sm:w-fit sm:grid-cols-2">
           <a
             href={whatsappUrl('Hello, I want to place a custom order')}
             target="_blank"
             rel="noopener noreferrer"
-            className={buttonClasses('secondary', 'md', 'w-full !text-brand-600 sm:w-auto')}
+            className={buttonClasses('secondary', 'md', 'w-full !text-brand-600')}
           >
             Place custom order
           </a>
           <Link
             href="/products"
-            className={buttonClasses('secondary', 'md', 'w-full !text-brand-600 sm:w-auto')}
+            className={buttonClasses('secondary', 'md', 'w-full !text-brand-600')}
           >
             Shop the catalog
+          </Link>
+          <Link
+            href="/categories/engineered-products"
+            className={buttonClasses('secondary', 'md', 'w-full !text-brand-600')}
+          >
+            View Engineered Products
+          </Link>
+          <Link
+            href="/categories/cad-design"
+            className={buttonClasses('secondary', 'md', 'w-full !text-brand-600')}
+          >
+            View CAD Design
           </Link>
         </div>
       </section>
@@ -89,6 +112,19 @@ export default async function HomePage() {
           <ProductGrid products={onSale.items} />
         </section>
       ) : null}
+
+      {categorySections.map(({ category, products }) =>
+        products.length > 0 ? (
+          <section key={category.slug}>
+            <SectionHeading
+              title={category.name}
+              href={`/categories/${category.slug}`}
+              linkLabel="Shop all"
+            />
+            <ProductGrid products={products} />
+          </section>
+        ) : null,
+      )}
 
       <section>
         <SectionHeading

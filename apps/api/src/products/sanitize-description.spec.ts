@@ -9,6 +9,7 @@ describe('sanitizeDescription', () => {
     expect(sanitizeDescription('<ul><li>One</li><li>Two</li></ul>')).toBe(
       '<ul><li>One</li><li>Two</li></ul>',
     );
+    expect(sanitizeDescription('<p><u>under</u></p>')).toBe('<p><u>under</u></p>');
   });
 
   it('strips scripts and event-handler payloads, keeping allowed tags', () => {

@@ -4,6 +4,7 @@ import { publicProductCategorySchema } from './category';
 import {
   CUSTOMIZATION_MAX_COLOR_OPTIONS,
   MEDIA_TYPES,
+  PRODUCT_SCOPE_MAX_CHARS,
   PRODUCT_SPEC_MAX_ROWS,
   PRODUCT_STATUSES,
 } from '../constants';
@@ -68,6 +69,7 @@ export const createProductSchema = z
     // optional — server slugifies the title when omitted
     slug: slugSchema.optional(),
     description: z.string().max(20_000).default(''),
+    scope: z.string().max(PRODUCT_SCOPE_MAX_CHARS).default(''),
     status: z.enum(PRODUCT_STATUSES).default('draft'),
     featured: z.boolean().optional(),
     categoryId: categoryIdSchema,
@@ -85,6 +87,7 @@ export const updateProductSchema = z
     title: z.string().min(1).max(200).optional(),
     slug: slugSchema.optional(),
     description: z.string().max(20_000).optional(),
+    scope: z.string().max(PRODUCT_SCOPE_MAX_CHARS).optional(),
     status: z.enum(PRODUCT_STATUSES).optional(),
     featured: z.boolean().optional(),
     categoryId: categoryIdSchema,
@@ -172,6 +175,7 @@ export const adminProductSchema = z.object({
   title: z.string(),
   slug: z.string(),
   description: z.string(),
+  scope: z.string(),
   status: z.enum(PRODUCT_STATUSES),
   featured: z.boolean(),
   categoryId: z.string().nullable(),
@@ -289,6 +293,7 @@ export const publicProductSchema = z.object({
   title: z.string(),
   slug: z.string(),
   description: z.string(),
+  scope: z.string(),
   featured: z.boolean(),
   category: publicProductCategorySchema.nullable(),
   customizationNameEnabled: z.boolean(),

@@ -7,6 +7,8 @@ import type {
   AttachImageInput,
   CreateProductInput,
   ProductImageDto,
+  ScopeDraftRequest,
+  ScopeDraftResponse,
   StockAdjustmentInput,
   UpdateProductInput,
   UploadSignatureResponse,
@@ -45,10 +47,21 @@ export async function updateProductAction(
 ): Promise<ActionResult<AdminProduct>> {
   await requireAdmin();
   const res = await runAction(() =>
-    apiFetch<AdminProduct>(`/admin/products/${id}`, { method: 'PATCH', body: JSON.stringify(input) }),
+    apiFetch<AdminProduct>(`/admin/products/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+    }),
   );
   if (res.ok) bump('/admin/products', `/admin/products/${id}`);
   return res;
+}
+
+/** AI-drafted "Scope" HTML from the (possibly unsaved) product form state. Nothing is persisted. */
+export async function draftScopeAction(
+  input: ScopeDraftRequest,
+): Promise<ActionResult<ScopeDraftResponse>> {
+  await requireAdmin();
+  return runAction(() => apiFetch<ScopeDraftResponse>('/admin/ai/scope', json(input)));
 }
 
 export async function deleteProductAction(id: string): Promise<ActionResult> {
@@ -111,7 +124,8 @@ export async function adjustStockAction(
   const res = await runAction(() =>
     apiFetch<AdminVariant>(`/admin/variants/${variantId}/stock`, json(input)),
   );
-  if (res.ok) bump('/admin/inventory', ...(opts.productId ? [`/admin/products/${opts.productId}`] : []));
+  if (res.ok)
+    bump('/admin/inventory', ...(opts.productId ? [`/admin/products/${opts.productId}`] : []));
   return res;
 }
 
@@ -154,10 +168,7 @@ export async function reorderImagesAction(
   return res;
 }
 
-export async function deleteImageAction(
-  productId: string,
-  imageId: string,
-): Promise<ActionResult> {
+export async function deleteImageAction(productId: string, imageId: string): Promise<ActionResult> {
   await requireAdmin();
   const res = await runAction(() =>
     apiFetch<undefined>(`/admin/products/${productId}/images/${imageId}`, { method: 'DELETE' }),

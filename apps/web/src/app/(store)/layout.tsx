@@ -5,6 +5,7 @@ import { SiteHeader } from '@/components/store/site-header';
 import { SiteFooter } from '@/components/store/site-footer';
 import { CategorySidebar, CategorySidebarProvider } from '@/components/store/category-sidebar';
 import { WhatsappFloatButton } from '@/components/store/whatsapp-float-button';
+import { ChatWidget } from '@/components/store/chat-widget';
 import { Toaster } from '@/components/ui/toast';
 
 export const dynamic = 'force-dynamic';
@@ -26,6 +27,7 @@ export default async function StoreLayout({ children }: { children: React.ReactN
       </div>
       <Toaster />
       <WhatsappFloatButton />
+      <ChatWidget />
     </CategorySidebarProvider>
   );
 }

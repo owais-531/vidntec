@@ -111,14 +111,15 @@ model RefreshToken {
 // Storefront browse category. Optional on a product — an unassigned product
 // still appears in "All products" / "Latest", just not on a category page.
 model Category {
-  id        String   @id @default(cuid())
-  name      String
-  slug      String   @unique
-  color     String   @default("#dce9e2") // storefront tile accent colour
-  emoji     String? // optional tile icon
-  position  Int      @default(0) // manual display order (admin-controlled)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String   @id @default(cuid())
+  name           String
+  slug           String   @unique
+  color          String   @default("#dce9e2") // storefront tile accent colour
+  emoji          String? // optional tile icon
+  position       Int      @default(0) // manual display order (admin-controlled)
+  featuredOnHome Boolean  @default(false) // shown as its own section on the homepage
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   products Product[]
 
@@ -131,6 +132,8 @@ model Product {
   title                     String
   slug                      String        @unique
   description               String        @default("")
+  /// optional rich-text (sanitized HTML) "Scope" section — technical detail for engineered products
+  scope                     String        @default("")
   status                    ProductStatus @default(draft)
   featured                  Boolean       @default(false) // shown in the storefront "Trending" section
   categoryId                String? // optional; SET NULL on category delete so the product survives

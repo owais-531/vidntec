@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { cn } from '@/lib/cn';
@@ -10,10 +11,13 @@ export function RichTextEditor({
   id,
   value,
   onChange,
+  underline = false,
 }: {
   id?: string;
   value: string;
   onChange: (html: string) => void;
+  /** Adds an Underline toolbar button (the API sanitizer allows `<u>`). */
+  underline?: boolean;
 }) {
   const editor = useEditor({
     extensions: [
@@ -26,7 +30,7 @@ export function RichTextEditor({
         strike: false,
         code: false,
         link: false,
-        underline: false,
+        ...(underline ? {} : { underline: false as const }),
       }),
     ],
     content: value,
@@ -42,6 +46,17 @@ export function RichTextEditor({
       },
     },
   });
+
+  // `content` above is only read on mount — follow outside changes to `value`
+  // (e.g. an AI-drafted Scope). Typing round-trips through onChange, so the
+  // HTML already matches and this is a no-op.
+  useEffect(() => {
+    if (!editor) return;
+    const current = editor.getHTML();
+    if (value !== (current === EMPTY_HTML ? '' : current)) {
+      editor.commands.setContent(value, { emitUpdate: false });
+    }
+  }, [editor, value]);
 
   return (
     <div className="rounded-card border border-paper-line bg-white focus-within:border-brand-400 focus-within:ring-2 focus-within:ring-brand-100">
@@ -60,6 +75,15 @@ export function RichTextEditor({
         >
           <em>I</em>
         </ToolbarButton>
+        {underline ? (
+          <ToolbarButton
+            active={editor?.isActive('underline') ?? false}
+            onClick={() => editor?.chain().focus().toggleUnderline().run()}
+            label="Underline"
+          >
+            <u>U</u>
+          </ToolbarButton>
+        ) : null}
         <ToolbarButton
           active={editor?.isActive('bulletList') ?? false}
           onClick={() => editor?.chain().focus().toggleBulletList().run()}

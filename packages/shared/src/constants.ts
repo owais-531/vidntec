@@ -66,6 +66,9 @@ export const CUSTOMIZATION_MAX_COLOR_OPTIONS = 4;
 /** Safety cap on admin-entered "Details" spec rows per product — not a UI-visible limit. */
 export const PRODUCT_SPEC_MAX_ROWS = 40;
 
+/** Max length of a product's rich-text "Scope" section, counted on the stored HTML (markup included). */
+export const PRODUCT_SCOPE_MAX_CHARS = 50_000;
+
 /** Variants at or below this stock level are flagged in the admin inventory view. */
 export const LOW_STOCK_THRESHOLD = 5;
 

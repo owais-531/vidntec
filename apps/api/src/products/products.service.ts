@@ -96,6 +96,7 @@ export class ProductsService {
           title: input.title,
           slug,
           description: sanitizeDescription(input.description),
+          scope: sanitizeDescription(input.scope),
           status: input.status,
           featured: input.featured ?? false,
           customizationNameEnabled: input.customizationNameEnabled,
@@ -120,6 +121,9 @@ export class ProductsService {
     if (input.slug) data.slug = await this.uniqueSlug(input.slug, id);
     if (data.description !== undefined) {
       data.description = sanitizeDescription(data.description as string);
+    }
+    if (data.scope !== undefined) {
+      data.scope = sanitizeDescription(data.scope as string);
     }
     if (categoryId !== undefined) {
       await this.assertCategoryExists(categoryId);

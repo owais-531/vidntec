@@ -1,13 +1,14 @@
 import sanitizeHtml from 'sanitize-html';
 
 /**
+ * Used for every product rich-text field (description, scope).
  * Defense-in-depth: the admin editor's schema already limits output to these
  * tags, but the API must not trust that only that editor ever writes here —
  * this is rendered unescaped on the public storefront.
  */
 export function sanitizeDescription(html: string): string {
   const cleaned = sanitizeHtml(html, {
-    allowedTags: ['p', 'strong', 'em', 'ul', 'li', 'br'],
+    allowedTags: ['p', 'strong', 'em', 'u', 'ul', 'li', 'br'],
     allowedAttributes: {},
     disallowedTagsMode: 'discard',
   });

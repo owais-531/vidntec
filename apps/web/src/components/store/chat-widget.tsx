@@ -31,6 +31,84 @@ function ChatIcon() {
   );
 }
 
+// Model replies are plain text with light markdown. Render `[label](url)`
+// links, bare URLs/emails, and "- " bullets as React nodes (never as HTML).
+// Trailing sentence punctuation stays outside a bare link.
+const INLINE_RE =
+  /(\[[^\]]+\]\([^)\s]+\)|https?:\/\/[^\s<>]+|[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+)/g;
+
+function Anchor({ href, children, onDark }: { href: string; children: React.ReactNode; onDark: boolean }) {
+  const external = /^https?:\/\//.test(href);
+  return (
+    <a
+      href={href}
+      {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+      className={onDark ? 'font-medium underline' : 'font-medium text-brand-600 underline'}
+    >
+      {children}
+    </a>
+  );
+}
+
+function inline(text: string, onDark: boolean): React.ReactNode[] {
+  return text.split(INLINE_RE).map((part, i) => {
+    if (i % 2 === 0) return part;
+    const md = part.match(/^\[([^\]]+)\]\(([^)\s]+)\)$/);
+    if (md) {
+      const href = /^(https?:\/\/|mailto:)/.test(md[2]!) ? md[2]! : null;
+      return href ? (
+        <Anchor key={i} href={href} onDark={onDark}>
+          {md[1]}
+        </Anchor>
+      ) : (
+        md[1]
+      );
+    }
+    const m = part.match(/^(.*?)([).,;:!?]*)$/);
+    const token = m?.[1] ?? part;
+    const trail = m?.[2] ?? '';
+    const isUrl = /^https?:\/\//.test(token);
+    return (
+      <span key={i}>
+        <Anchor href={isUrl ? token : `mailto:${token}`} onDark={onDark}>
+          {token}
+        </Anchor>
+        {trail}
+      </span>
+    );
+  });
+}
+
+function renderMessage(text: string, onDark: boolean): React.ReactNode {
+  // Models sometimes inline "1. item 2. item" on one line — split those too.
+  const lines = text.replace(/\s+(?=\d+\.\s+\[)/g, '\n').split('\n');
+  const blocks: React.ReactNode[] = [];
+  let bullets: string[] = [];
+  const flush = () => {
+    if (!bullets.length) return;
+    blocks.push(
+      <ul key={`ul${blocks.length}`} className="my-1 list-disc space-y-1 pl-5">
+        {bullets.map((b, i) => (
+          <li key={i}>{inline(b, onDark)}</li>
+        ))}
+      </ul>,
+    );
+    bullets = [];
+  };
+  for (const raw of lines) {
+    const line = raw.trim();
+    const bullet = line.match(/^(?:[-*•]|\d+\.)\s+(.*)$/);
+    if (bullet) {
+      bullets.push(bullet[1]!);
+      continue;
+    }
+    flush();
+    if (line) blocks.push(<p key={`p${blocks.length}`}>{inline(line, onDark)}</p>);
+  }
+  flush();
+  return <div className="space-y-1.5">{blocks}</div>;
+}
+
 export function ChatWidget() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([GREETING]);
@@ -67,7 +145,7 @@ export function ChatWidget() {
         aria-label={open ? 'Close chat' : 'Chat with VIDNTEC'}
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="fixed bottom-24 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-brand-500 text-white shadow-pop transition-transform hover:scale-105"
+        className="fixed bottom-[84px] right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-brand-500 text-white shadow-pop transition-transform hover:scale-105"
       >
         {open ? (
           <span aria-hidden className="text-2xl leading-none">
@@ -82,7 +160,7 @@ export function ChatWidget() {
         <div
           role="dialog"
           aria-label="VIDNTEC Assistant chat"
-          className="fixed bottom-44 right-5 z-40 flex h-[480px] max-h-[70vh] w-[360px] max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden rounded-card bg-white shadow-pop"
+          className="fixed bottom-[164px] right-5 z-40 flex h-[480px] max-h-[70vh] w-[360px] max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden rounded-card bg-white shadow-pop"
         >
           <div className="border-b border-paper-line bg-brand-500 px-4 py-3 text-white">
             <p className="text-sm font-semibold">VIDNTEC Assistant</p>
@@ -93,11 +171,11 @@ export function ChatWidget() {
             {messages.map((m, i) => (
               <div
                 key={i}
-                className={`max-w-[85%] rounded-card px-3 py-2 text-sm ${
+                className={`max-w-[85%] break-words rounded-card px-3 py-2 text-sm [overflow-wrap:anywhere] ${
                   m.role === 'user' ? 'ml-auto bg-brand-500 text-white' : 'bg-paper-sunken text-ink'
                 }`}
               >
-                {m.content}
+                {renderMessage(m.content, m.role === 'user')}
               </div>
             ))}
             {pending ? (

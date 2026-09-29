@@ -44,6 +44,7 @@ export class CategoriesService {
           slug,
           color: input.color,
           emoji: input.emoji ?? null,
+          featuredOnHome: input.featuredOnHome ?? false,
           position: (last?.position ?? -1) + 1,
         },
       });
@@ -59,6 +60,7 @@ export class CategoriesService {
     if (input.name !== undefined) data.name = input.name;
     if (input.color !== undefined) data.color = input.color;
     if (input.emoji !== undefined) data.emoji = input.emoji ?? null;
+    if (input.featuredOnHome !== undefined) data.featuredOnHome = input.featuredOnHome;
     if (input.slug !== undefined) data.slug = await this.uniqueSlug(input.slug, id);
 
     try {
@@ -148,12 +150,20 @@ function toAdminDto(c: Category, productCount: number): AdminCategory {
     color: c.color,
     emoji: c.emoji,
     position: c.position,
+    featuredOnHome: c.featuredOnHome,
     productCount,
   };
 }
 
 function toPublicDto(c: Category, productCount: number): PublicCategory {
-  return { name: c.name, slug: c.slug, color: c.color, emoji: c.emoji, productCount };
+  return {
+    name: c.name,
+    slug: c.slug,
+    color: c.color,
+    emoji: c.emoji,
+    featuredOnHome: c.featuredOnHome,
+    productCount,
+  };
 }
 
 function mapWriteError(err: unknown): Error {

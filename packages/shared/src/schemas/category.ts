@@ -19,6 +19,7 @@ export const categoryInputSchema = z.object({
   slug: slugSchema.optional(),
   color: hexColorSchema.default(CATEGORY_DEFAULT_COLOR),
   emoji: emojiSchema.nullable().optional(),
+  featuredOnHome: z.boolean().default(false),
 });
 export type CategoryInput = z.infer<typeof categoryInputSchema>;
 
@@ -40,6 +41,7 @@ export const adminCategorySchema = z.object({
   color: z.string(),
   emoji: z.string().nullable(),
   position: z.number().int(),
+  featuredOnHome: z.boolean(),
   productCount: z.number().int(),
 });
 export type AdminCategory = z.infer<typeof adminCategorySchema>;
@@ -50,6 +52,7 @@ export const publicCategorySchema = z.object({
   slug: z.string(),
   color: z.string(),
   emoji: z.string().nullable(),
+  featuredOnHome: z.boolean(),
   productCount: z.number().int(),
 });
 export type PublicCategory = z.infer<typeof publicCategorySchema>;

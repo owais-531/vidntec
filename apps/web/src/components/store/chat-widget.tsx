@@ -217,12 +217,12 @@ export function ChatWidget() {
               maxLength={500}
               disabled={pending}
               aria-label="Message"
-              className="h-9 flex-1 rounded-card border border-paper-line px-3 text-sm focus:border-brand-400 focus:outline-none"
+              className="h-9 min-w-0 flex-1 rounded-card border border-paper-line px-3 text-base focus:border-brand-400 focus:outline-none sm:text-sm"
             />
             <button
               type="submit"
               disabled={pending || !input.trim()}
-              className={buttonClasses('primary', 'sm')}
+              className={`${buttonClasses('primary', 'sm')} shrink-0`}
             >
               Send
             </button>

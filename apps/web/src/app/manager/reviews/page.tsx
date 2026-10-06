@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/admin/page-header';
 import { DeleteReviewButton } from '@/components/manager/delete-review-button';
 import { Card } from '@/components/ui/card';
 import { StarRating } from '@/components/store/star-rating';
+import { ReviewImageThumbnails } from '@/components/store/review-image-lightbox';
 import { buttonClasses } from '@/components/ui/button';
 
 export const metadata: Metadata = { title: 'Reviews' };
@@ -65,6 +66,7 @@ export default async function ManagerReviewsPage({
               <th className="px-4 py-3">Author</th>
               <th className="px-4 py-3">Rating</th>
               <th className="px-4 py-3">Comment</th>
+              <th className="px-4 py-3">Photos</th>
               <th className="px-4 py-3">Date</th>
               <th className="px-4 py-3" />
             </tr>
@@ -72,7 +74,7 @@ export default async function ManagerReviewsPage({
           <tbody>
             {items.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-sm text-ink-muted">
+                <td colSpan={7} className="px-4 py-10 text-center text-sm text-ink-muted">
                   No reviews.
                 </td>
               </tr>
@@ -97,6 +99,13 @@ export default async function ManagerReviewsPage({
                     {r.rating != null ? <StarRating value={r.rating} size="xs" /> : '—'}
                   </td>
                   <td className="max-w-xs truncate px-4 py-3 text-ink-soft">{r.comment ?? '—'}</td>
+                  <td className="px-4 py-3">
+                    {r.images.length > 0 ? (
+                      <ReviewImageThumbnails urls={r.images.map((i) => i.url)} />
+                    ) : (
+                      <span className="text-ink-soft">—</span>
+                    )}
+                  </td>
                   <td className="whitespace-nowrap px-4 py-3 text-ink-soft">
                     {formatOrderDateTime(r.createdAt)}
                   </td>

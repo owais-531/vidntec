@@ -3,6 +3,7 @@ import { Suspense } from 'react';
 import { Logo } from '@/components/ui/logo';
 import { SearchForm } from './search-form';
 import { AccountMenu } from './account-menu';
+import { CartHeaderLink } from './cart-drawer';
 import { CategorySidebarToggle } from './category-sidebar';
 import { GiftMarqueeStrip } from './gift-marquee-strip';
 
@@ -79,7 +80,7 @@ export function SiteHeader({
                   <span className="hidden sm:inline">Account</span>
                 </Link>
               )}
-              <Link href="/cart" className="flex items-center gap-1.5 hover:opacity-90">
+              <CartHeaderLink count={cartCount}>
                 <CartIcon />
                 <span className="hidden sm:inline">Cart</span>
                 {cartCount > 0 ? (
@@ -87,7 +88,7 @@ export function SiteHeader({
                     {cartCount}
                   </span>
                 ) : null}
-              </Link>
+              </CartHeaderLink>
             </nav>
           </div>
         </div>

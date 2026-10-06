@@ -10,6 +10,7 @@ import {
 } from '@vidntec/shared';
 import { cn } from '@/lib/cn';
 import { addToCartAction } from '@/lib/cart/actions';
+import { useCartDrawer } from './cart-drawer';
 import { whatsappUrl } from '@/lib/whatsapp';
 import { Button, buttonClasses } from '@/components/ui/button';
 import { Input } from '@/components/ui/field';
@@ -37,6 +38,7 @@ export function VariantPicker({
   const [selectedId, setSelectedId] = useState(
     variants.find((v) => v.inStock)?.id ?? variants[0]?.id ?? '',
   );
+  const cartDrawer = useCartDrawer();
   const [qty, setQty] = useState(1);
   const [customName, setCustomName] = useState('');
   const [customColorLabel, setCustomColorLabel] = useState('');
@@ -66,7 +68,7 @@ export function VariantPicker({
         customColorLabel: customizationColorEnabled ? customColorLabel : undefined,
       });
       if (res.ok) {
-        toast('Added to cart');
+        cartDrawer?.showAdded(res.data, selected.id);
         router.refresh();
       } else {
         toast(res.error, 'error');

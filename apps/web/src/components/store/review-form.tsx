@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+import { LoadingImage } from '@/components/ui/loading-image';
 import { useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { REVIEW_MAX_IMAGES, REVIEW_MAX_IMAGE_BYTES, type MyReview } from '@vidntec/shared';
@@ -133,7 +133,7 @@ export function ReviewForm({
           <div className="flex flex-wrap gap-2">
             {images.map((img) => (
               <div key={img.url} className="relative h-16 w-16 overflow-hidden rounded-card border border-paper-line">
-                <Image src={img.url} alt="" width={64} height={64} className="h-full w-full object-cover" />
+                <LoadingImage src={img.url} alt="" width={64} height={64} wrapperClassName="h-full w-full" className="h-full w-full object-cover" />
                 <button
                   type="button"
                   onClick={() => removeImage(img.url)}

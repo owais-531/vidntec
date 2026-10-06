@@ -101,11 +101,13 @@ export class ReviewsService {
     });
 
     // DB is the source of truth and is already updated — now best-effort clean
-    // up the old Cloudinary assets this review no longer references.
+    // up the old Cloudinary assets this review no longer references. Photos the
+    // customer kept are re-submitted with the same publicId and must NOT be deleted.
     if (existing) {
+      const kept = new Set(imageData.map((i) => i.publicId).filter(Boolean));
       await Promise.all(
         existing.images
-          .filter((i) => i.publicId)
+          .filter((i) => i.publicId && !kept.has(i.publicId))
           .map((i) => this.cloudinary.deleteAsset(i.publicId as string)),
       );
     }

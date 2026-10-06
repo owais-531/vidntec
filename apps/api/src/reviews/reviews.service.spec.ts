@@ -78,6 +78,25 @@ describe('ReviewsService.upsertForProduct', () => {
     expect(ctx.cloudinary.deleteAsset).toHaveBeenCalledWith('vidntec/reviews/old');
   });
 
+  it('keeps Cloudinary assets for photos re-submitted on edit, deleting only the dropped ones', async () => {
+    ctx.prisma.review.findUnique.mockResolvedValue(
+      reviewRow({
+        images: [
+          { id: 'i1', publicId: 'vidntec/reviews/keep', url: 'x', position: 0 },
+          { id: 'i2', publicId: 'vidntec/reviews/drop', url: 'y', position: 1 },
+        ],
+      }),
+    );
+    await ctx.service.upsertForProduct('p1', 'u1', {
+      authorName: 'Ayesha',
+      rating: 4,
+      comment: 'Updated',
+      images: [{ url: 'x', publicId: 'vidntec/reviews/keep' }],
+    });
+    expect(ctx.cloudinary.deleteAsset).toHaveBeenCalledTimes(1);
+    expect(ctx.cloudinary.deleteAsset).toHaveBeenCalledWith('vidntec/reviews/drop');
+  });
+
   it('404s when the product does not exist', async () => {
     ctx.prisma.product.count.mockResolvedValue(0);
     await expect(

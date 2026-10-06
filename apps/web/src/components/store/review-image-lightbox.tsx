@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Image from 'next/image';
+import { LoadingImage } from '@/components/ui/loading-image';
 
 /**
  * A row of review-image thumbnails; clicking one opens a fullscreen modal
@@ -23,11 +23,12 @@ export function ReviewImageThumbnails({ urls }: { urls: string[] }) {
             onClick={() => setOpenAt(i)}
             className="h-16 w-16 overflow-hidden rounded-card border border-paper-line"
           >
-            <Image
+            <LoadingImage
               src={url}
               alt=""
               width={64}
               height={64}
+              wrapperClassName="h-full w-full"
               className="h-full w-full object-cover"
             />
           </button>
@@ -101,11 +102,13 @@ function ReviewImageLightbox({
       ) : null}
 
       <div className="relative max-h-[85vh] max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
-        <Image
+        <LoadingImage
+          key={urls[index]}
           src={urls[index]!}
           alt=""
           width={1000}
           height={1000}
+          wrapperClassName="min-h-[200px] min-w-[200px] overflow-hidden rounded-card"
           className="max-h-[85vh] w-auto max-w-[90vw] rounded-card object-contain"
         />
         {urls.length > 1 ? (

@@ -14,7 +14,14 @@ import { Input } from '@/components/ui/field';
 import { ConfirmButton } from '@/components/ui/confirm-button';
 import { toast } from '@/components/ui/toast';
 
-const GRID = 'grid grid-cols-[1fr_6.5rem_6.5rem_1fr_4.5rem_auto] items-center gap-2';
+/**
+ * ONE grid holds the header, every row and the add-row (rows are `display: contents`),
+ * so the 1fr/auto columns resolve once and the header labels line up with the inputs.
+ * Separate per-row grids don't: the auto-width actions column is empty in the header but
+ * holds buttons in a row, which skews the 1fr columns between them.
+ */
+const GRID = 'grid grid-cols-[1fr_6.5rem_6.5rem_1fr_4.5rem_4rem_auto] items-center gap-2';
+const HEADERS = ['Name', 'Price', 'Was', 'SKU', 'Stock', 'Colour', ''];
 
 /** '' → null; otherwise parse. Returns undefined when the string is invalid money. */
 function parseOptionalPrice(raw: string): number | null | undefined {
@@ -24,6 +31,32 @@ function parseOptionalPrice(raw: string): number | null | undefined {
 
 function compareToInput(cents: number | null): string {
   return cents != null ? centsToInput(cents) : '';
+}
+
+/** Colour the AI preview paints this variant in. '' = none (the reference photo's own colour is kept). */
+function ColourCell({ value, onChange }: { value: string; onChange: (hex: string) => void }) {
+  return (
+    <div className="flex items-center gap-1">
+      <input
+        type="color"
+        value={value || '#cccccc'}
+        onChange={(e) => onChange(e.target.value)}
+        className={`h-9 w-9 shrink-0 cursor-pointer rounded border border-paper-line ${value ? '' : 'opacity-40'}`}
+        aria-label="Preview colour"
+        title={value ? value : 'No preview colour set'}
+      />
+      {value ? (
+        <button
+          type="button"
+          onClick={() => onChange('')}
+          className="text-ink-muted hover:text-brand-600"
+          aria-label="Clear preview colour"
+        >
+          ✕
+        </button>
+      ) : null}
+    </div>
+  );
 }
 
 function VariantRow({
@@ -41,13 +74,15 @@ function VariantRow({
   const [compareAt, setCompareAt] = useState(compareToInput(variant.compareAtPrice));
   const [sku, setSku] = useState(variant.sku);
   const [stock, setStock] = useState(String(variant.stock));
+  const [colour, setColour] = useState(variant.colorHex ?? '');
 
   const dirty =
     name !== variant.name ||
     price !== centsToInput(variant.price) ||
     compareAt !== compareToInput(variant.compareAtPrice) ||
     sku !== variant.sku ||
-    stock !== String(variant.stock);
+    stock !== String(variant.stock) ||
+    colour !== (variant.colorHex ?? '');
 
   const save = () => {
     const cents = inputToCents(price);
@@ -61,13 +96,14 @@ function VariantRow({
         compareAtPrice: compareCents,
         sku: sku.trim(),
         stock: Math.max(0, Math.floor(Number(stock) || 0)),
+        colorHex: colour || null,
       });
       toast(res.ok ? 'Variant saved' : res.error, res.ok ? 'success' : 'error');
     });
   };
 
   return (
-    <div className={GRID}>
+    <div className="contents">
       <Input value={name} onChange={(e) => setName(e.target.value)} />
       <Input inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} />
       <Input
@@ -78,6 +114,7 @@ function VariantRow({
       />
       <Input value={sku} onChange={(e) => setSku(e.target.value)} />
       <Input inputMode="numeric" value={stock} onChange={(e) => setStock(e.target.value)} />
+      <ColourCell value={colour} onChange={setColour} />
       <div className="flex items-center gap-1">
         <Button size="sm" onClick={save} disabled={pending || !dirty}>
           Save
@@ -105,12 +142,15 @@ function AddVariant({ productId }: { productId: string }) {
   const [compareAt, setCompareAt] = useState('');
   const [sku, setSku] = useState('');
   const [stock, setStock] = useState('0');
+  const [colour, setColour] = useState('');
 
   if (!open) {
     return (
-      <Button size="sm" variant="secondary" onClick={() => setOpen(true)}>
-        + Add variant
-      </Button>
+      <div className="col-span-full">
+        <Button size="sm" variant="secondary" onClick={() => setOpen(true)}>
+          + Add variant
+        </Button>
+      </div>
     );
   }
 
@@ -128,6 +168,7 @@ function AddVariant({ productId }: { productId: string }) {
         compareAtPrice: compareCents,
         sku: sku.trim(),
         stock: Math.max(0, Math.floor(Number(stock) || 0)),
+        colorHex: colour || null,
       });
       if (res.ok) {
         toast('Variant added');
@@ -137,6 +178,7 @@ function AddVariant({ productId }: { productId: string }) {
         setCompareAt('');
         setSku('');
         setStock('0');
+        setColour('');
       } else {
         toast(res.error, 'error');
       }
@@ -144,7 +186,7 @@ function AddVariant({ productId }: { productId: string }) {
   };
 
   return (
-    <div className={`${GRID} rounded-card bg-paper-sunken p-2`}>
+    <div className="contents">
       <Input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
       <Input
         placeholder="Price"
@@ -165,6 +207,7 @@ function AddVariant({ productId }: { productId: string }) {
         value={stock}
         onChange={(e) => setStock(e.target.value)}
       />
+      <ColourCell value={colour} onChange={setColour} />
       <div className="flex gap-1">
         <Button size="sm" onClick={add} disabled={pending}>
           Add
@@ -190,28 +233,28 @@ export function VariantsEditor({
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold">Variants &amp; stock</h2>
         </div>
-        <div
-          className={`${GRID} px-1 text-xs font-medium uppercase tracking-wide text-ink-muted`}
-        >
-          <span>Name</span>
-          <span>Price</span>
-          <span>Was</span>
-          <span>SKU</span>
-          <span>Stock</span>
-          <span />
+        <div className={GRID}>
+          {HEADERS.map((h, i) => (
+            <span
+              key={i}
+              className="px-1 text-xs font-medium uppercase tracking-wide text-ink-muted"
+            >
+              {h}
+            </span>
+          ))}
+          {variants.map((v) => (
+            <VariantRow
+              key={v.id}
+              productId={productId}
+              variant={v}
+              canDelete={variants.length > 1}
+            />
+          ))}
+          <p className="col-span-full px-1 text-xs text-ink-muted">
+            “Was” is the pre-sale price. Set it above the price to put the variant on sale. “Colour” is only used by the AI name preview — it paints the product in this variant’s colour.
+          </p>
+          <AddVariant productId={productId} />
         </div>
-        {variants.map((v) => (
-          <VariantRow
-            key={v.id}
-            productId={productId}
-            variant={v}
-            canDelete={variants.length > 1}
-          />
-        ))}
-        <p className="px-1 text-xs text-ink-muted">
-          “Was” is the pre-sale price. Set it above the price to put the variant on sale.
-        </p>
-        <AddVariant productId={productId} />
       </CardBody>
     </Card>
   );

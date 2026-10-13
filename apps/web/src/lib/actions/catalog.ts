@@ -2,10 +2,14 @@
 
 import { revalidatePath, revalidateTag } from 'next/cache';
 import type {
+  AdminPreviewReference,
   AdminProduct,
   AdminVariant,
   AttachImageInput,
+  AttachPreviewReferenceInput,
   CreateProductInput,
+  PreviewResponse,
+  PreviewTestRequest,
   ProductImageDto,
   ScopeDraftRequest,
   ScopeDraftResponse,
@@ -191,4 +195,57 @@ export async function setImageVariantAction(
   );
   if (res.ok) bump(`/admin/products/${productId}`, '/admin/products');
   return res;
+}
+
+// ── AI preview ──────────────────────────────────────────────────────────────
+
+export async function attachPreviewReferenceAction(
+  productId: string,
+  input: AttachPreviewReferenceInput,
+): Promise<ActionResult<AdminPreviewReference>> {
+  await requireAdmin();
+  const res = await runAction(() =>
+    apiFetch<AdminPreviewReference>(`/admin/products/${productId}/preview-references`, json(input)),
+  );
+  if (res.ok) revalidatePath(`/admin/products/${productId}`);
+  return res;
+}
+
+export async function setPreviewReferenceLettersAction(
+  productId: string,
+  referenceId: string,
+  letters: string[],
+): Promise<ActionResult<AdminPreviewReference>> {
+  await requireAdmin();
+  const res = await runAction(() =>
+    apiFetch<AdminPreviewReference>(`/admin/products/${productId}/preview-references/${referenceId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ letters }),
+    }),
+  );
+  if (res.ok) revalidatePath(`/admin/products/${productId}`);
+  return res;
+}
+
+export async function deletePreviewReferenceAction(
+  productId: string,
+  referenceId: string,
+): Promise<ActionResult> {
+  await requireAdmin();
+  const res = await runAction(() =>
+    apiFetch<undefined>(`/admin/products/${productId}/preview-references/${referenceId}`, {
+      method: 'DELETE',
+    }),
+  );
+  if (res.ok) revalidatePath(`/admin/products/${productId}`);
+  return res;
+}
+
+/** Admin "Test" box — runs the real preview (a paid image call) without a visitor or quota. */
+export async function testPreviewAction(
+  productId: string,
+  input: PreviewTestRequest,
+): Promise<ActionResult<PreviewResponse>> {
+  await requireAdmin();
+  return runAction(() => apiFetch<PreviewResponse>(`/admin/products/${productId}/preview-test`, json(input)));
 }

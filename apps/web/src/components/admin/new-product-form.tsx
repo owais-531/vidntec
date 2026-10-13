@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import {
+  PREVIEW_DEFAULT_LIMIT,
   PRODUCT_STATUSES,
   type AdminCategory,
   type CreateProductInput,
@@ -107,6 +108,10 @@ export function NewProductForm({ categories }: { categories: AdminCategory[] }) 
       customizationNameEnabled,
       customizationColorEnabled,
       customizationColorOptions: cleanColorOptions,
+      // The AI preview is set up on the edit page — reference photos need a saved product.
+      previewEnabled: false,
+      previewPrompt: '',
+      previewLimit: PREVIEW_DEFAULT_LIMIT,
       specs: cleanSpecs,
       variants,
       ...(slug.trim() ? { slug: slug.trim() } : {}),

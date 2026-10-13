@@ -7,9 +7,10 @@ import type {
   ProductSpec,
 } from '@vidntec/shared';
 import type { Prisma, ProductImage, Variant } from '@vidntec/shared/prisma';
+import { toAdminPreviewReference } from '../preview/preview-references.service';
 
 export type ProductWithRelations = Prisma.ProductGetPayload<{
-  include: { images: true; variants: true; category: true };
+  include: { images: true; variants: true; category: true; previewReferences: true };
 }>;
 
 export function toColorOptions(value: Prisma.JsonValue): CustomizationColorOption[] {
@@ -40,6 +41,7 @@ export function toAdminVariant(v: Variant): AdminVariant {
     compareAtPrice: v.compareAtPrice,
     sku: v.sku,
     stock: v.stock,
+    colorHex: v.colorHex,
   };
 }
 
@@ -57,6 +59,12 @@ export function toAdminProduct(p: ProductWithRelations): AdminProduct {
     customizationNameEnabled: p.customizationNameEnabled,
     customizationColorEnabled: p.customizationColorEnabled,
     customizationColorOptions: toColorOptions(p.customizationColorOptions),
+    previewEnabled: p.previewEnabled,
+    previewPrompt: p.previewPrompt,
+    previewLimit: p.previewLimit,
+    previewReferences: [...p.previewReferences]
+      .sort((a, b) => a.position - b.position)
+      .map(toAdminPreviewReference),
     specs: toProductSpecs(p.specs),
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString(),

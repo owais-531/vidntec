@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import {
+  PREVIEW_MAX_LIMIT,
   PRODUCT_STATUSES,
   type AdminCategory,
   type AdminProduct,
@@ -15,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Field, Input, Select } from '@/components/ui/field';
 import { RichTextEditor } from '@/components/admin/rich-text-editor';
 import { CustomizationFields } from '@/components/admin/customization-fields';
+import { PreviewFields } from '@/components/admin/preview-fields';
 import { SpecFields } from '@/components/admin/spec-fields';
 import { ScopeField } from '@/components/admin/scope-field';
 import { ConfirmButton } from '@/components/ui/confirm-button';
@@ -57,6 +59,9 @@ export function EditProductForm({
   const [customizationColorOptions, setCustomizationColorOptions] = useState<
     CustomizationColorOption[]
   >(product.customizationColorOptions);
+  const [previewEnabled, setPreviewEnabled] = useState(product.previewEnabled);
+  const [previewPrompt, setPreviewPrompt] = useState(product.previewPrompt);
+  const [previewLimit, setPreviewLimit] = useState(String(product.previewLimit));
   const [specs, setSpecs] = useState<ProductSpec[]>(product.specs);
 
   const dirty =
@@ -70,6 +75,9 @@ export function EditProductForm({
     customizationNameEnabled !== product.customizationNameEnabled ||
     customizationColorEnabled !== product.customizationColorEnabled ||
     !sameColorOptions(customizationColorOptions, product.customizationColorOptions) ||
+    previewEnabled !== product.previewEnabled ||
+    previewPrompt !== product.previewPrompt ||
+    previewLimit !== String(product.previewLimit) ||
     !sameSpecs(specs, product.specs);
 
   const save = () => {
@@ -79,6 +87,11 @@ export function EditProductForm({
       .filter((o) => o.label);
     if (customizationColorEnabled && cleanColorOptions.length === 0) {
       setFieldErrors({ _: ['Add at least one color option, or turn off color personalization.'] });
+      return;
+    }
+    const limitNum = Number(previewLimit);
+    if (previewEnabled && !(Number.isInteger(limitNum) && limitNum >= 1 && limitNum <= PREVIEW_MAX_LIMIT)) {
+      setFieldErrors({ previewLimit: [`Enter a number from 1 to ${PREVIEW_MAX_LIMIT}`] });
       return;
     }
     const cleanSpecs = specs
@@ -96,6 +109,11 @@ export function EditProductForm({
         customizationNameEnabled,
         customizationColorEnabled,
         customizationColorOptions: cleanColorOptions,
+        previewEnabled,
+        previewPrompt: previewPrompt.trim(),
+        ...(Number.isInteger(limitNum) && limitNum >= 1 && limitNum <= PREVIEW_MAX_LIMIT
+          ? { previewLimit: limitNum }
+          : {}),
         specs: cleanSpecs,
       });
       if (res.ok) toast('Saved');
@@ -172,6 +190,24 @@ export function EditProductForm({
             onColorEnabledChange={setCustomizationColorEnabled}
             colorOptions={customizationColorOptions}
             onColorOptionsChange={setCustomizationColorOptions}
+          />
+        </div>
+
+        <div className="border-t border-paper-line pt-4">
+          <PreviewFields
+            enabled={previewEnabled}
+            onEnabledChange={setPreviewEnabled}
+            prompt={previewPrompt}
+            onPromptChange={setPreviewPrompt}
+            limit={previewLimit}
+            onLimitChange={setPreviewLimit}
+            nameEnabled={customizationNameEnabled}
+            referenceCount={product.previewReferences.length}
+            errors={{
+              enabled: fieldErrors.previewEnabled?.[0],
+              prompt: fieldErrors.previewPrompt?.[0],
+              limit: fieldErrors.previewLimit?.[0],
+            }}
           />
         </div>
 

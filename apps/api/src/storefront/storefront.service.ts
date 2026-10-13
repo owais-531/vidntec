@@ -162,6 +162,7 @@ export class StorefrontService {
       customizationNameEnabled: product.customizationNameEnabled,
       customizationColorEnabled: product.customizationColorEnabled,
       customizationColorOptions: toColorOptions(product.customizationColorOptions),
+      previewEnabled: product.previewEnabled,
       specs: toProductSpecs(product.specs),
       images: [...product.images]
         .sort((a, b) => a.position - b.position)

@@ -49,8 +49,9 @@ export const envSchema = z.object({
   RESEND_API_KEY: z.string().min(1),
   EMAIL_FROM: z.string().min(1), // "vidntec <orders@vidntec.com>"
 
-  // OpenAI (storefront chatbot)
+  // OpenAI (storefront chatbot, admin Scope drafts, product image previews)
   OPENAI_API_KEY: z.string().min(1),
+  OPENAI_IMAGE_MODEL: z.string().min(1).default('gpt-image-1'),
 
   // Sentry
   SENTRY_DSN: optionalUrl,

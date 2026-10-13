@@ -27,6 +27,8 @@ export function ProductViewer({
   customizationNameEnabled,
   customizationColorEnabled,
   customizationColorOptions,
+  previewEnabled,
+  productSlug,
   specs,
   productUrl,
 }: {
@@ -38,6 +40,8 @@ export function ProductViewer({
   customizationNameEnabled: boolean;
   customizationColorEnabled: boolean;
   customizationColorOptions: CustomizationColorOption[];
+  previewEnabled: boolean;
+  productSlug: string;
   specs: ProductSpec[];
   productUrl: string;
 }) {
@@ -55,6 +59,8 @@ export function ProductViewer({
             customizationNameEnabled={customizationNameEnabled}
             customizationColorEnabled={customizationColorEnabled}
             customizationColorOptions={customizationColorOptions}
+            previewEnabled={previewEnabled}
+            productSlug={productSlug}
             onVariantChange={setSelectedVariantId}
             productUrl={productUrl}
           />

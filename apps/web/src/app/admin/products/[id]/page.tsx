@@ -6,6 +6,7 @@ import { PageHeader } from '@/components/admin/page-header';
 import { EditProductForm } from '@/components/admin/edit-product-form';
 import { VariantsEditor } from '@/components/admin/variants-editor';
 import { ImageManager } from '@/components/admin/image-manager';
+import { PreviewReferenceManager } from '@/components/admin/preview-reference-manager';
 import { StatusBadge } from '@/components/ui/badge';
 
 export async function generateMetadata({
@@ -46,6 +47,11 @@ export default async function ProductEditPage({
         <EditProductForm product={product} categories={categories} />
         <VariantsEditor productId={product.id} variants={product.variants} />
         <ImageManager productId={product.id} images={product.images} variants={product.variants} />
+        <PreviewReferenceManager
+          productId={product.id}
+          references={product.previewReferences}
+          variants={product.variants}
+        />
       </div>
     </>
   );

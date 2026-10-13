@@ -32,7 +32,12 @@ import {
 } from './products.mapper';
 import { sanitizeDescription } from './sanitize-description';
 
-const WITH_RELATIONS = { images: true, variants: true, category: true } as const;
+const WITH_RELATIONS = {
+  images: true,
+  variants: true,
+  category: true,
+  previewReferences: true,
+} as const;
 
 @Injectable()
 export class ProductsService {
@@ -102,6 +107,9 @@ export class ProductsService {
           customizationNameEnabled: input.customizationNameEnabled,
           customizationColorEnabled: input.customizationColorEnabled,
           customizationColorOptions: input.customizationColorOptions as Prisma.InputJsonValue,
+          previewEnabled: input.previewEnabled,
+          previewPrompt: input.previewPrompt,
+          previewLimit: input.previewLimit,
           specs: input.specs as Prisma.InputJsonValue,
           ...(input.categoryId ? { category: { connect: { id: input.categoryId } } } : {}),
           variants: { create: input.variants },
@@ -116,6 +124,7 @@ export class ProductsService {
 
   async update(id: string, input: UpdateProductInput): Promise<AdminProduct> {
     await this.ensureExists(id);
+    await this.assertPreviewNeedsName(id, input);
     const { categoryId, customizationColorOptions, specs, ...rest } = input;
     const data: Prisma.ProductUpdateInput = { ...rest };
     if (input.slug) data.slug = await this.uniqueSlug(input.slug, id);
@@ -327,6 +336,22 @@ export class ProductsService {
   private async ensureVariantExists(id: string): Promise<void> {
     const count = await this.prisma.variant.count({ where: { id } });
     if (!count) throw new NotFoundException('Variant not found');
+  }
+
+  /** The preview reads the customer's typed name, so it can't be on while name personalization is off. */
+  private async assertPreviewNeedsName(id: string, input: UpdateProductInput): Promise<void> {
+    if (input.previewEnabled === undefined && input.customizationNameEnabled === undefined) return;
+    const current = await this.prisma.product.findUnique({
+      where: { id },
+      select: { previewEnabled: true, customizationNameEnabled: true },
+    });
+    const preview = input.previewEnabled ?? current?.previewEnabled;
+    const name = input.customizationNameEnabled ?? current?.customizationNameEnabled;
+    if (preview && !name) {
+      throw new BadRequestException(
+        'Turn on "printed name" personalization to use the preview (or turn the preview off first)',
+      );
+    }
   }
 
   private async assertCategoryExists(categoryId?: string | null): Promise<void> {

@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useTransition } from 'react';
 import {
@@ -10,6 +11,7 @@ import {
 } from '@vidntec/shared';
 import { cn } from '@/lib/cn';
 import { addToCartAction } from '@/lib/cart/actions';
+import { generatePreviewAction } from '@/lib/actions/preview';
 import { useCartDrawer } from './cart-drawer';
 import { whatsappUrl } from '@/lib/whatsapp';
 import { Button, buttonClasses } from '@/components/ui/button';
@@ -22,6 +24,8 @@ export function VariantPicker({
   customizationNameEnabled = false,
   customizationColorEnabled = false,
   customizationColorOptions = [],
+  previewEnabled = false,
+  productSlug,
   onVariantChange,
   productUrl,
 }: {
@@ -29,6 +33,9 @@ export function VariantPicker({
   customizationNameEnabled?: boolean;
   customizationColorEnabled?: boolean;
   customizationColorOptions?: CustomizationColorOption[];
+  /** Offer the AI "Preview" button next to the name field (needs the name field). */
+  previewEnabled?: boolean;
+  productSlug: string;
   /** Fires with the selected variant's id, including once for the initial default. */
   onVariantChange?: (variantId: string) => void;
   productUrl: string;
@@ -42,6 +49,14 @@ export function VariantPicker({
   const [qty, setQty] = useState(1);
   const [customName, setCustomName] = useState('');
   const [customColorLabel, setCustomColorLabel] = useState('');
+  const [preview, setPreview] = useState<{
+    status: 'idle' | 'loading' | 'done' | 'error';
+    image?: string;
+    /** name + variant the shown image was made for — to flag it stale once either changes */
+    key?: string;
+    remaining?: number | null;
+    error?: string;
+  }>({ status: 'idle' });
   const selected = variants.find((v) => v.id === selectedId) ?? variants[0];
 
   useEffect(() => {
@@ -52,6 +67,31 @@ export function VariantPicker({
   if (!selected) return null;
 
   const maxQty = Math.max(1, Math.min(selected.stock, 99));
+  const showPreview = previewEnabled && customizationNameEnabled;
+  const previewKey = `${customName.trim()}|${selected.id}`;
+  const previewStale = preview.status === 'done' && preview.key !== previewKey;
+
+  const makePreview = () => {
+    const name = customName.trim();
+    if (!name) {
+      toast('Type a name first to see the preview', 'error');
+      return;
+    }
+    const key = previewKey;
+    setPreview((p) => ({ ...p, status: 'loading', error: undefined }));
+    startTransition(async () => {
+      const res = await generatePreviewAction(productSlug, selected.id, name);
+      if (res.ok) {
+        setPreview({ status: 'done', image: res.data.imageDataUrl, key, remaining: res.data.remaining });
+      } else {
+        setPreview((p) => ({
+          ...p,
+          status: 'error',
+          error: res.fieldErrors?.name?.[0] ?? res.error,
+        }));
+      }
+    });
+  };
 
   const addToCart = () => {
     if (customizationNameEnabled && !customName.trim()) {
@@ -147,6 +187,58 @@ export function VariantPicker({
             placeholder="e.g. Ayesha"
             maxLength={CUSTOMIZATION_NAME_MAX_LENGTH}
           />
+          {showPreview ? (
+            <div className="mt-3 space-y-3">
+              <Button
+                type="button"
+                variant="secondary"
+                className="w-full"
+                onClick={makePreview}
+                disabled={preview.status === 'loading' || !customName.trim()}
+              >
+                {preview.status === 'loading'
+                  ? 'Creating your preview…'
+                  : preview.status === 'done'
+                    ? 'Preview again'
+                    : 'Preview with this name'}
+              </Button>
+
+              {preview.status === 'loading' ? (
+                <div
+                  className="flex aspect-[2/3] w-full max-w-xs animate-pulse flex-col items-center justify-center gap-2 rounded-card border border-paper-line bg-paper-sunken p-4 text-center"
+                  role="status"
+                >
+                  <span className="text-sm font-medium text-ink-soft">Creating your preview…</span>
+                  <span className="text-xs text-ink-muted">This takes about 20 seconds.</span>
+                </div>
+              ) : null}
+
+              {preview.status === 'error' ? (
+                <p className="rounded-card bg-brand-50 px-3 py-2 text-xs text-brand-700">{preview.error}</p>
+              ) : null}
+
+              {preview.image && preview.status !== 'loading' ? (
+                <figure className="max-w-xs space-y-2">
+                  <Image
+                    src={preview.image}
+                    alt={`Preview of this product personalized with the name ${customName.trim()}`}
+                    width={512}
+                    height={768}
+                    unoptimized
+                    className="h-auto w-full rounded-card border border-paper-line bg-white"
+                  />
+                  <figcaption className="text-xs text-ink-muted">
+                    {previewStale
+                      ? 'This preview is for a different name or option — click “Preview again” to update it.'
+                      : 'AI-generated preview — your final product may vary slightly.'}
+                    {typeof preview.remaining === 'number'
+                      ? ` ${preview.remaining} preview${preview.remaining === 1 ? '' : 's'} left today.`
+                      : null}
+                  </figcaption>
+                </figure>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       ) : null}
 

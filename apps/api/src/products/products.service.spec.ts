@@ -22,6 +22,10 @@ const productRow = (over: Record<string, unknown> = {}) => ({
   category: null,
   createdAt: new Date(),
   updatedAt: new Date(),
+  previewEnabled: false,
+  previewPrompt: '',
+  previewLimit: 5,
+  previewReferences: [],
   images: [],
   variants: [],
   ...over,
@@ -176,5 +180,42 @@ describe('ProductsService category assignment', () => {
   it('leaves the category untouched when categoryId is omitted from an update', async () => {
     await ctx.service.update('p1', { title: 'Renamed' });
     expect(ctx.prisma.product.update.mock.calls[0][0].data.category).toBeUndefined();
+  });
+});
+
+describe('ProductsService preview rules', () => {
+  let ctx: ReturnType<typeof make>;
+  beforeEach(() => {
+    ctx = make();
+  });
+
+  it('rejects turning the preview on while name personalization is off', async () => {
+    ctx.prisma.product.findUnique.mockResolvedValueOnce({
+      previewEnabled: false,
+      customizationNameEnabled: false,
+    });
+    await expect(ctx.service.update('p1', { previewEnabled: true })).rejects.toThrow(
+      'Turn on "printed name" personalization',
+    );
+    expect(ctx.prisma.product.update).not.toHaveBeenCalled();
+  });
+
+  it('allows the preview when name personalization is switched on in the same save', async () => {
+    ctx.prisma.product.findUnique.mockResolvedValueOnce({
+      previewEnabled: false,
+      customizationNameEnabled: false,
+    });
+    await ctx.service.update('p1', { previewEnabled: true, customizationNameEnabled: true });
+    expect(ctx.prisma.product.update).toHaveBeenCalled();
+  });
+
+  it('rejects switching name personalization off while the preview is on', async () => {
+    ctx.prisma.product.findUnique.mockResolvedValueOnce({
+      previewEnabled: true,
+      customizationNameEnabled: true,
+    });
+    await expect(
+      ctx.service.update('p1', { customizationNameEnabled: false }),
+    ).rejects.toThrow('printed name');
   });
 });

@@ -44,6 +44,10 @@ export const REFRESH_TOKEN_COOKIE = 'vidntec_rt';
 export const CART_COOKIE = 'vidntec_cart';
 export const CART_COOKIE_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
 
+/** httpOnly cookie holding an opaque id for one browser — keys the per-visitor AI preview limit. */
+export const PREVIEW_VISITOR_COOKIE = 'vidntec_pv';
+export const PREVIEW_VISITOR_COOKIE_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
+
 /** Token lifetimes. Access short-lived; refresh long-lived and rotated on each use. */
 export const ACCESS_TOKEN_TTL_SECONDS = 15 * 60; // 15 minutes
 export const REFRESH_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60; // 30 days
@@ -62,6 +66,28 @@ export const CUSTOMIZATION_NAME_MAX_LENGTH = 40;
 
 /** Max admin-defined text-color options for a customizable product. */
 export const CUSTOMIZATION_MAX_COLOR_OPTIONS = 4;
+
+/**
+ * AI preview (customer sees their personalization on the product before buying).
+ * The prompt blanks {name} {initial} {colour} are filled in server-side.
+ */
+export const PREVIEW_DEFAULT_LIMIT = 5;
+export const PREVIEW_MAX_LIMIT = 20;
+export const PREVIEW_MAX_REFERENCES = 30;
+export const PREVIEW_PROMPT_MAX_CHARS = 4000;
+/** Hard ceiling on previews across ALL visitors per 24h — the cost backstop on the paid image API. */
+export const PREVIEW_GLOBAL_DAILY_CAP = 300;
+/** Letters, combining marks, spaces, apostrophes, periods and hyphens — starts with a letter. */
+export const PREVIEW_NAME_PATTERN = /^[\p{L}\p{M}][\p{L}\p{M}' .-]*$/u;
+
+export const DEFAULT_PREVIEW_PROMPT = `Create a clean studio product photo of the product shown in the reference photo. Keep its exact design: the same shapes, proportions, materials, decorations and lettering style.
+
+Change only these things:
+- Colour: the main body of the product is {colour}.
+- Text: the personalized text must read exactly "{name}", spelled letter for letter, placed where the reference shows its text. If the product has a large initial letter, that letter is "{initial}". Do not keep the reference's original text.
+- Background: a pure white (#FFFFFF) studio background with only a soft shadow under the product.
+
+Rules: do not extend, widen or add ledges or shelves to any shape; keep the product's silhouette as in the reference. Every decoration stays attached to the product and none floats in the air. The whole product is fully inside the image with at least 8% empty margin on every side. No other text, no watermarks.`;
 
 /** Safety cap on admin-entered "Details" spec rows per product — not a UI-visible limit. */
 export const PRODUCT_SPEC_MAX_ROWS = 40;

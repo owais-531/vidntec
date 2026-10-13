@@ -144,16 +144,25 @@ model Product {
   customizationColorEnabled Boolean       @default(false)
   // [{ label: string, hex: "#rrggbb" }], max 4 — enforced by Zod, not the DB
   customizationColorOptions Json          @default("[]")
+  // AI preview: lets a customer see their personalization on the product before
+  // buying. Needs customizationNameEnabled. Prompt blanks: {name} {initial} {colour};
+  // empty = the shared default prompt.
+  previewEnabled            Boolean       @default(false)
+  previewPrompt             String        @default("")
+  // Max previews one visitor may generate per product per 24h
+  previewLimit              Int           @default(5)
   // [{ label: string, value: string }] — free-form admin-entered spec rows,
   // shown on the PDP as a "Details" table. No cap other than the Zod max.
   specs                     Json          @default("[]")
   createdAt                 DateTime      @default(now())
   updatedAt                 DateTime      @updatedAt
 
-  category Category?      @relation(fields: [categoryId], references: [id], onDelete: SetNull, onUpdate: Cascade)
-  images   ProductImage[]
-  variants Variant[]
-  reviews  Review[]
+  category           Category?           @relation(fields: [categoryId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  images             ProductImage[]
+  variants           Variant[]
+  reviews            Review[]
+  previewReferences  PreviewReference[]
+  previewGenerations PreviewGeneration[]
 
   @@index([status])
   @@index([featured])
@@ -217,6 +226,38 @@ model ProductImage {
   @@map("product_images")
 }
 
+// A real product photo the AI preview is built from. `letters` lists the
+// initials it should be used for (e.g. ["A"]); empty = the default for any other
+// initial. Uploaded straight to Cloudinary like ProductImage.
+model PreviewReference {
+  id        String   @id @default(cuid())
+  productId String
+  url       String
+  publicId  String?
+  letters   String[] @default([])
+  position  Int      @default(0)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("preview_references")
+}
+
+// One row per preview a visitor generated — drives the per-visitor and global
+// daily caps on the (paid) image API. Failed generations are deleted again.
+model PreviewGeneration {
+  id         String   @id @default(cuid())
+  productId  String
+  visitorKey String
+  createdAt  DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, visitorKey, createdAt])
+  @@index([createdAt])
+  @@map("preview_generations")
+}
+
 model Variant {
   id             String   @id @default(cuid())
   productId      String
@@ -225,6 +266,8 @@ model Variant {
   compareAtPrice Int? // optional "was" price; on sale when compareAtPrice > price
   sku            String   @unique
   stock          Int      @default(0)
+  // "#rrggbb" — the colour the AI preview paints the product in for this variant; null = keep the reference photo's colour
+  colorHex       String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

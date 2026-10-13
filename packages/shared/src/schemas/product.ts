@@ -1,15 +1,28 @@
 import { z } from 'zod';
 import { centsSchema, slugSchema } from './common';
 import { publicProductCategorySchema } from './category';
+import { adminPreviewReferenceSchema } from './preview';
 import {
   CUSTOMIZATION_MAX_COLOR_OPTIONS,
   MEDIA_TYPES,
+  PREVIEW_DEFAULT_LIMIT,
+  PREVIEW_MAX_LIMIT,
+  PREVIEW_PROMPT_MAX_CHARS,
   PRODUCT_SCOPE_MAX_CHARS,
   PRODUCT_SPEC_MAX_ROWS,
   PRODUCT_STATUSES,
 } from '../constants';
 
 export const mediaTypeSchema = z.enum(MEDIA_TYPES);
+
+/** A custom AI-preview prompt must contain the {name} blank, or the customer's name would never reach it. */
+const previewPromptSchema = z
+  .string()
+  .max(PREVIEW_PROMPT_MAX_CHARS)
+  .refine((v) => v.trim() === '' || v.includes('{name}'), 'The prompt must include {name}');
+
+/** "#rrggbb" */
+export const hexColorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'must be a hex color like #8a1a1c');
 
 // ── inputs (admin) ──────────────────────────────────────────────────────────
 
@@ -20,6 +33,8 @@ export const variantInputSchema = z.object({
   compareAtPrice: centsSchema.nullable().optional(),
   sku: z.string().min(1).max(64),
   stock: z.number().int().min(0),
+  /** Colour the AI preview paints this variant in. null clears it (preview keeps the reference photo's colour). */
+  colorHex: hexColorSchema.nullable().optional(),
 });
 export type VariantInput = z.infer<typeof variantInputSchema>;
 
@@ -76,10 +91,22 @@ export const createProductSchema = z
     customizationNameEnabled: z.boolean().default(false),
     customizationColorEnabled: z.boolean().default(false),
     customizationColorOptions: customizationColorOptionsSchema.default([]),
+    previewEnabled: z.boolean().default(false),
+    previewPrompt: previewPromptSchema.default(''),
+    previewLimit: z.number().int().min(1).max(PREVIEW_MAX_LIMIT).default(PREVIEW_DEFAULT_LIMIT),
     specs: productSpecsSchema.default([]),
     variants: z.array(variantInputSchema).min(1, 'a product needs at least one variant'),
   })
-  .superRefine(requireColorOptionsWhenEnabled);
+  .superRefine(requireColorOptionsWhenEnabled)
+  .superRefine((data, ctx) => {
+    if (data.previewEnabled && !data.customizationNameEnabled) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Turn on "printed name" personalization to use the preview',
+        path: ['previewEnabled'],
+      });
+    }
+  });
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 
 export const updateProductSchema = z
@@ -94,6 +121,9 @@ export const updateProductSchema = z
     customizationNameEnabled: z.boolean().optional(),
     customizationColorEnabled: z.boolean().optional(),
     customizationColorOptions: customizationColorOptionsSchema.optional(),
+    previewEnabled: z.boolean().optional(),
+    previewPrompt: previewPromptSchema.optional(),
+    previewLimit: z.number().int().min(1).max(PREVIEW_MAX_LIMIT).optional(),
     specs: productSpecsSchema.optional(),
   })
   .superRefine(requireColorOptionsWhenEnabled);
@@ -167,6 +197,7 @@ export const adminVariantSchema = z.object({
   compareAtPrice: z.number().int().nullable(),
   sku: z.string(),
   stock: z.number().int(),
+  colorHex: z.string().nullable(),
 });
 export type AdminVariant = z.infer<typeof adminVariantSchema>;
 
@@ -183,6 +214,10 @@ export const adminProductSchema = z.object({
   customizationNameEnabled: z.boolean(),
   customizationColorEnabled: z.boolean(),
   customizationColorOptions: customizationColorOptionsSchema,
+  previewEnabled: z.boolean(),
+  previewPrompt: z.string(),
+  previewLimit: z.number().int(),
+  previewReferences: z.array(adminPreviewReferenceSchema),
   specs: productSpecsSchema,
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
@@ -299,6 +334,8 @@ export const publicProductSchema = z.object({
   customizationNameEnabled: z.boolean(),
   customizationColorEnabled: z.boolean(),
   customizationColorOptions: customizationColorOptionsSchema,
+  /** The product page offers the AI "Preview" button next to the name field. */
+  previewEnabled: z.boolean(),
   specs: productSpecsSchema,
   images: z.array(
     z.object({

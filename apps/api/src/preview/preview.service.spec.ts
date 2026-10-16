@@ -20,6 +20,9 @@ const product = (over: Record<string, unknown> = {}) => ({
   status: 'active',
   previewEnabled: true,
   previewPrompt: 'Draw "{name}" with initial {initial} in {colour}',
+  personalizationFields: [
+    { id: 'c', type: 'dropdown', label: 'Colour', required: true, choices: [{ label: 'Red', hex: '#ff0000' }, { label: 'Matte' }] },
+  ],
   previewLimit: 3,
   variants: [variant],
   previewReferences: [reference('default', []), reference('A', ['A'], 1)],
@@ -185,5 +188,39 @@ describe('PreviewService.generateForAdmin', () => {
       remaining: null,
     });
     expect(prisma.previewGeneration.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('PreviewService field mapping', () => {
+  const promptOf = (edit: { mock: { calls: unknown[][] } }) =>
+    (edit.mock.calls[0]![0] as { prompt: string }).prompt;
+
+  it('uses the mapped initial field when the customer gave a letter', async () => {
+    const { service, edit } = make({ product: product({ previewInitialFieldId: 'i' }) });
+    await service.generateForStorefront('frame', { ...input, name: 'Ayesha', initial: 'z' });
+    expect(promptOf(edit)).toContain('initial Z');
+  });
+
+  it('ignores a client initial when the product has no initial field, or it is not a letter', async () => {
+    const a = make();
+    await a.service.generateForStorefront('frame', { ...input, initial: 'Z' });
+    expect(promptOf(a.edit)).toContain('initial A');
+    const b = make({ product: product({ previewInitialFieldId: 'i' }) });
+    await b.service.generateForStorefront('frame', { ...input, initial: '7' });
+    expect(promptOf(b.edit)).toContain('initial A');
+  });
+
+  it("paints the mapped colour field's swatch, taken from the product's own choices", async () => {
+    const { service, edit } = make({ product: product({ previewColourFieldId: 'c' }) });
+    await service.generateForStorefront('frame', { ...input, colourChoice: 'Red' });
+    expect(promptOf(edit)).toContain('Red (#ff0000)');
+  });
+
+  it('falls back to the variant colour for an unknown choice, a choice without a swatch, or no mapping', async () => {
+    for (const [mapped, choice] of [['c', 'Hacked'], ['c', 'Matte'], [null, 'Red']] as const) {
+      const { service, edit } = make({ product: product({ previewColourFieldId: mapped }) });
+      await service.generateForStorefront('frame', { ...input, colourChoice: choice });
+      expect(promptOf(edit)).toContain('Purple (#9b7fd1)');
+    }
   });
 });

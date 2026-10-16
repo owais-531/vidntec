@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import {
   LOW_STOCK_THRESHOLD,
+  previewMappingProblem,
   slugify,
   type AdminProduct,
   type AdminProductListQuery,
@@ -29,6 +30,7 @@ import {
   toAdminVariant,
   toImageDto,
   toListItem,
+  toPersonalizationFields,
 } from './products.mapper';
 import { sanitizeDescription } from './sanitize-description';
 
@@ -104,10 +106,11 @@ export class ProductsService {
           scope: sanitizeDescription(input.scope),
           status: input.status,
           featured: input.featured ?? false,
-          customizationNameEnabled: input.customizationNameEnabled,
-          customizationColorEnabled: input.customizationColorEnabled,
-          customizationColorOptions: input.customizationColorOptions as Prisma.InputJsonValue,
+          personalizationFields: input.personalizationFields as Prisma.InputJsonValue,
           previewEnabled: input.previewEnabled,
+          previewNameFieldId: input.previewNameFieldId ?? null,
+          previewInitialFieldId: input.previewInitialFieldId ?? null,
+          previewColourFieldId: input.previewColourFieldId ?? null,
           previewPrompt: input.previewPrompt,
           previewLimit: input.previewLimit,
           specs: input.specs as Prisma.InputJsonValue,
@@ -124,8 +127,8 @@ export class ProductsService {
 
   async update(id: string, input: UpdateProductInput): Promise<AdminProduct> {
     await this.ensureExists(id);
-    await this.assertPreviewNeedsName(id, input);
-    const { categoryId, customizationColorOptions, specs, ...rest } = input;
+    await this.assertPreviewMapping(id, input);
+    const { categoryId, personalizationFields, specs, ...rest } = input;
     const data: Prisma.ProductUpdateInput = { ...rest };
     if (input.slug) data.slug = await this.uniqueSlug(input.slug, id);
     if (data.description !== undefined) {
@@ -138,8 +141,8 @@ export class ProductsService {
       await this.assertCategoryExists(categoryId);
       data.category = categoryId ? { connect: { id: categoryId } } : { disconnect: true };
     }
-    if (customizationColorOptions !== undefined) {
-      data.customizationColorOptions = customizationColorOptions as Prisma.InputJsonValue;
+    if (personalizationFields !== undefined) {
+      data.personalizationFields = personalizationFields as Prisma.InputJsonValue;
     }
     if (specs !== undefined) {
       data.specs = specs as Prisma.InputJsonValue;
@@ -338,20 +341,41 @@ export class ProductsService {
     if (!count) throw new NotFoundException('Variant not found');
   }
 
-  /** The preview reads the customer's typed name, so it can't be on while name personalization is off. */
-  private async assertPreviewNeedsName(id: string, input: UpdateProductInput): Promise<void> {
-    if (input.previewEnabled === undefined && input.customizationNameEnabled === undefined) return;
-    const current = await this.prisma.product.findUnique({
+  /**
+   * The preview reads the customer's name (and optionally an initial / colour)
+   * from personalization fields, so the mapping must point at fields that exist
+   * with the right type. Checked against the merged result of stored + incoming
+   * values, so removing a mapped field (or turning the preview on without a
+   * name field) is rejected.
+   */
+  private async assertPreviewMapping(id: string, input: UpdateProductInput): Promise<void> {
+    const touched =
+      input.previewEnabled !== undefined ||
+      input.personalizationFields !== undefined ||
+      input.previewNameFieldId !== undefined ||
+      input.previewInitialFieldId !== undefined ||
+      input.previewColourFieldId !== undefined;
+    if (!touched) return;
+    const cur = await this.prisma.product.findUnique({
       where: { id },
-      select: { previewEnabled: true, customizationNameEnabled: true },
+      select: {
+        previewEnabled: true,
+        personalizationFields: true,
+        previewNameFieldId: true,
+        previewInitialFieldId: true,
+        previewColourFieldId: true,
+      },
     });
-    const preview = input.previewEnabled ?? current?.previewEnabled;
-    const name = input.customizationNameEnabled ?? current?.customizationNameEnabled;
-    if (preview && !name) {
-      throw new BadRequestException(
-        'Turn on "printed name" personalization to use the preview (or turn the preview off first)',
-      );
-    }
+    const problem = previewMappingProblem(
+      input.personalizationFields ?? toPersonalizationFields(cur?.personalizationFields ?? []),
+      {
+        enabled: input.previewEnabled ?? cur?.previewEnabled ?? false,
+        nameFieldId: input.previewNameFieldId !== undefined ? input.previewNameFieldId : cur?.previewNameFieldId,
+        initialFieldId: input.previewInitialFieldId !== undefined ? input.previewInitialFieldId : cur?.previewInitialFieldId,
+        colourFieldId: input.previewColourFieldId !== undefined ? input.previewColourFieldId : cur?.previewColourFieldId,
+      },
+    );
+    if (problem) throw new BadRequestException(problem);
   }
 
   private async assertCategoryExists(categoryId?: string | null): Promise<void> {

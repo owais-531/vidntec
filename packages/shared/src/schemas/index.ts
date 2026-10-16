@@ -2,6 +2,7 @@ export * from './common';
 export * from './auth';
 export * from './category';
 export * from './preview';
+export * from './personalization';
 export * from './product';
 export * from './cart';
 export * from './checkout';

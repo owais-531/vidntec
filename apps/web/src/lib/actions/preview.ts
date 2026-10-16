@@ -31,12 +31,13 @@ export async function generatePreviewAction(
   slug: string,
   variantId: string,
   name: string,
+  extras: { initial?: string; colourChoice?: string } = {},
 ): Promise<ActionResult<PreviewResponse>> {
   const key = await visitorKey();
   return runAction(() =>
     apiFetch<PreviewResponse>(`/products/${encodeURIComponent(slug)}/preview`, {
       method: 'POST',
-      body: JSON.stringify({ variantId, name, visitorKey: key }),
+      body: JSON.stringify({ variantId, name, ...extras, visitorKey: key }),
       forwardCookies: false,
     }),
   );

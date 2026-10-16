@@ -1,7 +1,15 @@
 'use client';
 
 import { DEFAULT_PREVIEW_PROMPT, PREVIEW_MAX_LIMIT, PREVIEW_PROMPT_MAX_CHARS } from '@vidntec/shared';
-import { Field, Input, Textarea } from '@/components/ui/field';
+import { Field, Input, Select, Textarea } from '@/components/ui/field';
+
+/** A personalization field the preview can read, as currently edited in the form. */
+export interface PreviewFieldOption {
+  id: string;
+  label: string;
+}
+
+const nameOf = (f: PreviewFieldOption) => f.label.trim() || '(unnamed field)';
 
 /**
  * Admin controls for the AI "preview with your name" feature on a product.
@@ -15,7 +23,14 @@ export function PreviewFields({
   onPromptChange,
   limit,
   onLimitChange,
-  nameEnabled,
+  textFields,
+  dropdownFields,
+  nameFieldId,
+  onNameFieldChange,
+  initialFieldId,
+  onInitialFieldChange,
+  colourFieldId,
+  onColourFieldChange,
   referenceCount,
   errors,
 }: {
@@ -25,7 +40,15 @@ export function PreviewFields({
   onPromptChange: (v: string) => void;
   limit: string;
   onLimitChange: (v: string) => void;
-  nameEnabled: boolean;
+  /** Text / dropdown personalization fields in the form right now (unsaved edits included). */
+  textFields: PreviewFieldOption[];
+  dropdownFields: PreviewFieldOption[];
+  nameFieldId: string;
+  onNameFieldChange: (id: string) => void;
+  initialFieldId: string;
+  onInitialFieldChange: (id: string) => void;
+  colourFieldId: string;
+  onColourFieldChange: (id: string) => void;
   referenceCount: number;
   errors?: { enabled?: string; prompt?: string; limit?: string };
 }) {
@@ -44,9 +67,9 @@ export function PreviewFields({
       </label>
       {errors?.enabled ? <p className="text-xs text-brand-700">{errors.enabled}</p> : null}
 
-      {enabled && !nameEnabled ? (
+      {enabled && textFields.length === 0 ? (
         <p className="rounded-card bg-brand-50 px-3 py-2 text-xs text-brand-700">
-          The preview reads the customer’s name, so “Let customers add a printed name” above must be on too.
+          The preview reads the customer’s name, so add a Text field (e.g. “Name”) in Personalization above.
         </p>
       ) : null}
 
@@ -59,11 +82,69 @@ export function PreviewFields({
             </p>
           ) : null}
 
+          <div className="space-y-3 rounded-card border border-paper-line p-3">
+            <p className="text-xs font-medium text-ink-soft">
+              Which personalization fields does the preview read?
+            </p>
+            <Field label="Name (required)" htmlFor="preview-name-field">
+              <Select
+                id="preview-name-field"
+                value={nameFieldId}
+                onChange={(e) => onNameFieldChange(e.target.value)}
+              >
+                <option value="">— Choose the name field —</option>
+                {textFields.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {nameOf(f)}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <Field
+              label="Initial letter (optional)"
+              htmlFor="preview-initial-field"
+              hint="If the customer types their own initial here, it picks the reference photo and fills {initial}."
+            >
+              <Select
+                id="preview-initial-field"
+                value={initialFieldId}
+                onChange={(e) => onInitialFieldChange(e.target.value)}
+              >
+                <option value="">— Use the first letter of the name —</option>
+                {textFields
+                  .filter((f) => f.id !== nameFieldId)
+                  .map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {nameOf(f)}
+                    </option>
+                  ))}
+              </Select>
+            </Field>
+            <Field
+              label="Colour (optional)"
+              htmlFor="preview-colour-field"
+              hint="The swatch of the customer’s choice fills {colour}. Choices without a swatch fall back to the variant’s colour."
+            >
+              <Select
+                id="preview-colour-field"
+                value={colourFieldId}
+                onChange={(e) => onColourFieldChange(e.target.value)}
+              >
+                <option value="">— Use the selected variant’s colour —</option>
+                {dropdownFields.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {nameOf(f)}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+
           <Field
             label="Instructions for the AI"
             htmlFor="preview-prompt"
             error={errors?.prompt}
-            hint="Leave empty to use the standard instructions. Blanks filled in for each customer: {name} (their text), {initial} (its first letter), {colour} (the selected variant’s colour)."
+            hint="Leave empty to use the standard instructions. Blanks filled in for each customer: {name} (their text), {initial} (its first letter), {colour} (the colour field’s swatch, else the selected variant’s colour)."
           >
             <Textarea
               id="preview-prompt"

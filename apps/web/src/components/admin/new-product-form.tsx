@@ -7,11 +7,11 @@ import {
   PRODUCT_STATUSES,
   type AdminCategory,
   type CreateProductInput,
-  type CustomizationColorOption,
   type ProductSpec,
 } from '@vidntec/shared';
 import { createProductAction } from '@/lib/actions/catalog';
-import { CustomizationFields } from '@/components/admin/customization-fields';
+import { PersonalizationFieldsEditor } from '@/components/admin/personalization-fields-editor';
+import { fromDrafts, type FieldDraft } from '@/lib/personalization-draft';
 import { SpecFields } from '@/components/admin/spec-fields';
 import { ScopeField } from '@/components/admin/scope-field';
 import { inputToCents } from '@/lib/money-input';
@@ -47,11 +47,7 @@ export function NewProductForm({ categories }: { categories: AdminCategory[] }) 
   const [featured, setFeatured] = useState(false);
   const [categoryId, setCategoryId] = useState('');
   const [rows, setRows] = useState<VariantRow[]>([emptyRow()]);
-  const [customizationNameEnabled, setCustomizationNameEnabled] = useState(false);
-  const [customizationColorEnabled, setCustomizationColorEnabled] = useState(false);
-  const [customizationColorOptions, setCustomizationColorOptions] = useState<
-    CustomizationColorOption[]
-  >([]);
+  const [fieldDrafts, setFieldDrafts] = useState<FieldDraft[]>([]);
   const [specs, setSpecs] = useState<ProductSpec[]>([]);
 
   const setRow = (i: number, patch: Partial<VariantRow>) =>
@@ -86,11 +82,9 @@ export function NewProductForm({ categories }: { categories: AdminCategory[] }) 
       });
     }
 
-    const cleanColorOptions = customizationColorOptions
-      .map((o) => ({ label: o.label.trim(), hex: o.hex }))
-      .filter((o) => o.label);
-    if (customizationColorEnabled && cleanColorOptions.length === 0) {
-      setError('Add at least one color option, or turn off color personalization.');
+    const parsedFields = fromDrafts(fieldDrafts);
+    if (!parsedFields.ok) {
+      setError(parsedFields.error);
       return;
     }
 
@@ -105,9 +99,7 @@ export function NewProductForm({ categories }: { categories: AdminCategory[] }) 
       status,
       featured,
       categoryId: categoryId || null,
-      customizationNameEnabled,
-      customizationColorEnabled,
-      customizationColorOptions: cleanColorOptions,
+      personalizationFields: parsedFields.fields,
       // The AI preview is set up on the edit page — reference photos need a saved product.
       previewEnabled: false,
       previewPrompt: '',
@@ -209,13 +201,10 @@ export function NewProductForm({ categories }: { categories: AdminCategory[] }) 
 
       <Card>
         <CardBody>
-          <CustomizationFields
-            nameEnabled={customizationNameEnabled}
-            onNameEnabledChange={setCustomizationNameEnabled}
-            colorEnabled={customizationColorEnabled}
-            onColorEnabledChange={setCustomizationColorEnabled}
-            colorOptions={customizationColorOptions}
-            onColorOptionsChange={setCustomizationColorOptions}
+          <PersonalizationFieldsEditor
+            drafts={fieldDrafts}
+            onChange={setFieldDrafts}
+            error={fieldErrors.personalizationFields?.[0]}
           />
         </CardBody>
       </Card>

@@ -1,4 +1,5 @@
 import { formatMoney, formatOrderDateTime, orderNumber, type OrderDetail } from '@vidntec/shared';
+import { PersonalizationSummary } from '@/components/personalization-summary';
 import { Card, CardBody } from '@/components/ui/card';
 import { OrderStatusBadge } from '@/components/ui/order-status-badge';
 
@@ -24,17 +25,14 @@ export function OrderView({ order }: { order: OrderDetail }) {
         <div className="divide-y divide-paper-line px-5">
           {order.items.map((item) => (
             <div key={item.id} className="flex justify-between py-3 text-sm">
-              <span>
+              <div>
                 {item.titleSnapshot}
                 <span className="text-ink-muted"> × {item.quantity}</span>
-                {item.customNameSnapshot || item.customColorLabelSnapshot ? (
-                  <span className="block text-xs text-ink-muted">
-                    {[item.customNameSnapshot && `“${item.customNameSnapshot}”`, item.customColorLabelSnapshot]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </span>
-                ) : null}
-              </span>
+                <PersonalizationSummary
+                  selections={item.personalization}
+                  className="text-xs text-ink-muted"
+                />
+              </div>
               <span className="font-medium">{formatMoney(item.lineTotal, order.currency)}</span>
             </div>
           ))}

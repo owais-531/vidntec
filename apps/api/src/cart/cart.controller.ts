@@ -67,10 +67,7 @@ export class CartController {
     @CurrentUser() user?: AuthenticatedUser,
   ): Promise<CartView> {
     const cartId = await this.resolveWithCookie(req, res, user, true);
-    await this.cart.addItem(cartId!, body.variantId, body.quantity, {
-      customName: body.customName,
-      customColorLabel: body.customColorLabel,
-    });
+    await this.cart.addItem(cartId!, body.variantId, body.quantity, body.personalization);
     return this.cart.getView(cartId);
   }
 

@@ -23,6 +23,7 @@ import {
 import type { Prisma } from '@vidntec/shared/prisma';
 import type { Env } from '../config/env';
 import { PrismaService } from '../prisma/prisma.service';
+import { toPersonalizationFields } from '../products/products.mapper';
 import { createOpenAiClient } from '../chat/openai-client';
 import {
   buildPreviewPrompt,
@@ -65,7 +66,10 @@ export class PreviewService {
     if (!product.previewEnabled) {
       throw new BadRequestException('Preview is not available for this product');
     }
-    return this.run(product, input.variantId, input.name, input.visitorKey);
+    return this.run(product, input.variantId, input.name, input.visitorKey, {
+      initial: input.initial,
+      colourChoice: input.colourChoice,
+    });
   }
 
   /** Admin "Test" box: any product (even a draft, even with previews off), no quota. */
@@ -83,6 +87,7 @@ export class PreviewService {
     variantId: string,
     name: string,
     visitorKey: string | null,
+    extras: { initial?: string; colourChoice?: string } = {},
   ): Promise<PreviewResponse> {
     if (!this.client) {
       throw new ServiceUnavailableException('Preview is not set up yet — try again later.');
@@ -90,7 +95,7 @@ export class PreviewService {
     const variant = product.variants.find((v) => v.id === variantId);
     if (!variant) throw new BadRequestException('Selected option does not belong to this product');
 
-    const initial = nameInitial(name);
+    const initial = this.initialFor(product, name, extras.initial);
     const reference = pickReference(product.previewReferences, initial);
     if (!reference) {
       throw new ServiceUnavailableException('Preview is not set up for this product yet.');
@@ -102,7 +107,7 @@ export class PreviewService {
       const prompt = buildPreviewPrompt(product.previewPrompt, {
         name,
         initial,
-        colour: colourPhrase(variant.name, variant.colorHex),
+        colour: this.colourFor(product, variant, extras.colourChoice),
       });
       const imageDataUrl = await this.generate(image, prompt);
       return { imageDataUrl, remaining: quota ? quota.remaining : null };
@@ -111,6 +116,38 @@ export class PreviewService {
       if (quota) await this.prisma.previewGeneration.delete({ where: { id: quota.id } }).catch(() => undefined);
       throw err;
     }
+  }
+
+  /**
+   * The initial the prompt and reference photo use: the customer's answer in the
+   * product's mapped "initial" field when it has one and they gave a letter,
+   * else the first letter of the name.
+   */
+  private initialFor(product: PreviewProduct, name: string, given?: string): string {
+    if (product.previewInitialFieldId && given && /^\p{L}/u.test(given.trim())) {
+      return nameInitial(given);
+    }
+    return nameInitial(name);
+  }
+
+  /**
+   * The colour the prompt paints in: the swatch of the customer's pick in the
+   * product's mapped colour field (hex always from the product's own choices,
+   * never the client), else the selected variant's colour.
+   */
+  private colourFor(
+    product: PreviewProduct,
+    variant: { name: string; colorHex: string | null },
+    choice?: string,
+  ): string {
+    if (product.previewColourFieldId && choice) {
+      const field = toPersonalizationFields(product.personalizationFields).find(
+        (f) => f.id === product.previewColourFieldId,
+      );
+      const picked = field?.type === 'dropdown' ? field.choices.find((c) => c.label === choice) : undefined;
+      if (picked?.hex) return colourPhrase(picked.label, picked.hex);
+    }
+    return colourPhrase(variant.name, variant.colorHex);
   }
 
   /**

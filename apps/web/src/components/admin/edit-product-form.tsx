@@ -7,7 +7,6 @@ import {
   PRODUCT_STATUSES,
   type AdminCategory,
   type AdminProduct,
-  type CustomizationColorOption,
   type ProductSpec,
 } from '@vidntec/shared';
 import { deleteProductAction, updateProductAction } from '@/lib/actions/catalog';
@@ -15,16 +14,13 @@ import { Card, CardBody } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Field, Input, Select } from '@/components/ui/field';
 import { RichTextEditor } from '@/components/admin/rich-text-editor';
-import { CustomizationFields } from '@/components/admin/customization-fields';
+import { PersonalizationFieldsEditor } from '@/components/admin/personalization-fields-editor';
+import { fieldsSignature, fromDrafts, toDrafts, type FieldDraft } from '@/lib/personalization-draft';
 import { PreviewFields } from '@/components/admin/preview-fields';
 import { SpecFields } from '@/components/admin/spec-fields';
 import { ScopeField } from '@/components/admin/scope-field';
 import { ConfirmButton } from '@/components/ui/confirm-button';
 import { toast } from '@/components/ui/toast';
-
-function sameColorOptions(a: CustomizationColorOption[], b: CustomizationColorOption[]): boolean {
-  return a.length === b.length && a.every((o, i) => o.label === b[i]!.label && o.hex === b[i]!.hex);
-}
 
 function sameSpecs(a: ProductSpec[], b: ProductSpec[]): boolean {
   return (
@@ -50,19 +46,25 @@ export function EditProductForm({
   const [status, setStatus] = useState(product.status);
   const [featured, setFeatured] = useState(product.featured);
   const [categoryId, setCategoryId] = useState(product.categoryId ?? '');
-  const [customizationNameEnabled, setCustomizationNameEnabled] = useState(
-    product.customizationNameEnabled,
+  const [fieldDrafts, setFieldDrafts] = useState<FieldDraft[]>(() =>
+    toDrafts(product.personalizationFields),
   );
-  const [customizationColorEnabled, setCustomizationColorEnabled] = useState(
-    product.customizationColorEnabled,
-  );
-  const [customizationColorOptions, setCustomizationColorOptions] = useState<
-    CustomizationColorOption[]
-  >(product.customizationColorOptions);
   const [previewEnabled, setPreviewEnabled] = useState(product.previewEnabled);
+  const [nameFieldId, setNameFieldId] = useState(product.previewNameFieldId ?? '');
+  const [initialFieldId, setInitialFieldId] = useState(product.previewInitialFieldId ?? '');
+  const [colourFieldId, setColourFieldId] = useState(product.previewColourFieldId ?? '');
   const [previewPrompt, setPreviewPrompt] = useState(product.previewPrompt);
   const [previewLimit, setPreviewLimit] = useState(String(product.previewLimit));
   const [specs, setSpecs] = useState<ProductSpec[]>(product.specs);
+
+  const asOption = (d: FieldDraft) => ({ id: d.id, label: d.label });
+  const textFields = fieldDrafts.filter((d) => d.type === 'text').map(asOption);
+  const dropdownFields = fieldDrafts.filter((d) => d.type === 'dropdown').map(asOption);
+  // A mapping whose field was just removed/retyped in the form above counts as unset.
+  const effName = textFields.some((f) => f.id === nameFieldId) ? nameFieldId : '';
+  const effInitial =
+    effName !== initialFieldId && textFields.some((f) => f.id === initialFieldId) ? initialFieldId : '';
+  const effColour = dropdownFields.some((f) => f.id === colourFieldId) ? colourFieldId : '';
 
   const dirty =
     title !== product.title ||
@@ -72,21 +74,20 @@ export function EditProductForm({
     status !== product.status ||
     featured !== product.featured ||
     categoryId !== (product.categoryId ?? '') ||
-    customizationNameEnabled !== product.customizationNameEnabled ||
-    customizationColorEnabled !== product.customizationColorEnabled ||
-    !sameColorOptions(customizationColorOptions, product.customizationColorOptions) ||
+    fieldsSignature(fieldDrafts) !== fieldsSignature(toDrafts(product.personalizationFields)) ||
     previewEnabled !== product.previewEnabled ||
+    effName !== (product.previewNameFieldId ?? '') ||
+    effInitial !== (product.previewInitialFieldId ?? '') ||
+    effColour !== (product.previewColourFieldId ?? '') ||
     previewPrompt !== product.previewPrompt ||
     previewLimit !== String(product.previewLimit) ||
     !sameSpecs(specs, product.specs);
 
   const save = () => {
     setFieldErrors({});
-    const cleanColorOptions = customizationColorOptions
-      .map((o) => ({ label: o.label.trim(), hex: o.hex }))
-      .filter((o) => o.label);
-    if (customizationColorEnabled && cleanColorOptions.length === 0) {
-      setFieldErrors({ _: ['Add at least one color option, or turn off color personalization.'] });
+    const parsedFields = fromDrafts(fieldDrafts);
+    if (!parsedFields.ok) {
+      setFieldErrors({ personalizationFields: [parsedFields.error] });
       return;
     }
     const limitNum = Number(previewLimit);
@@ -106,10 +107,11 @@ export function EditProductForm({
         status,
         featured,
         categoryId: categoryId || null,
-        customizationNameEnabled,
-        customizationColorEnabled,
-        customizationColorOptions: cleanColorOptions,
+        personalizationFields: parsedFields.fields,
         previewEnabled,
+        previewNameFieldId: effName || null,
+        previewInitialFieldId: effInitial || null,
+        previewColourFieldId: effColour || null,
         previewPrompt: previewPrompt.trim(),
         ...(Number.isInteger(limitNum) && limitNum >= 1 && limitNum <= PREVIEW_MAX_LIMIT
           ? { previewLimit: limitNum }
@@ -183,25 +185,33 @@ export function EditProductForm({
         </label>
 
         <div className="border-t border-paper-line pt-4">
-          <CustomizationFields
-            nameEnabled={customizationNameEnabled}
-            onNameEnabledChange={setCustomizationNameEnabled}
-            colorEnabled={customizationColorEnabled}
-            onColorEnabledChange={setCustomizationColorEnabled}
-            colorOptions={customizationColorOptions}
-            onColorOptionsChange={setCustomizationColorOptions}
+          <PersonalizationFieldsEditor
+            drafts={fieldDrafts}
+            onChange={setFieldDrafts}
+            error={fieldErrors.personalizationFields?.[0]}
           />
         </div>
 
         <div className="border-t border-paper-line pt-4">
           <PreviewFields
             enabled={previewEnabled}
-            onEnabledChange={setPreviewEnabled}
+            onEnabledChange={(on) => {
+              setPreviewEnabled(on);
+              // Turning it on with one obvious candidate: pick the first text field as the name.
+              if (on && !effName && textFields[0]) setNameFieldId(textFields[0].id);
+            }}
             prompt={previewPrompt}
             onPromptChange={setPreviewPrompt}
             limit={previewLimit}
             onLimitChange={setPreviewLimit}
-            nameEnabled={customizationNameEnabled}
+            textFields={textFields}
+            dropdownFields={dropdownFields}
+            nameFieldId={effName}
+            onNameFieldChange={setNameFieldId}
+            initialFieldId={effInitial}
+            onInitialFieldChange={setInitialFieldId}
+            colourFieldId={effColour}
+            onColourFieldChange={setColourFieldId}
             referenceCount={product.previewReferences.length}
             errors={{
               enabled: fieldErrors.previewEnabled?.[0],

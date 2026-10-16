@@ -138,16 +138,26 @@ model Product {
   status                    ProductStatus @default(draft)
   featured                  Boolean       @default(false) // shown in the storefront "Trending" section
   categoryId                String? // optional; SET NULL on category delete so the product survives
-  // Customer-entered personalization: the printed text and/or its color.
+  // Admin-defined "Make it yours" fields the customer fills in (text / dropdown /
+  // checkbox), max 8 — shape + limits enforced by Zod (personalizationFieldsSchema).
   // Unrelated to Variant, which models the product's own finish/size/etc.
+  personalizationFields     Json          @default("[]")
+  // DEPRECATED (2026-10): replaced by personalizationFields; kept so the migration
+  // stays additive. Nothing reads or writes these any more — drop in a later cleanup.
   customizationNameEnabled  Boolean       @default(false)
   customizationColorEnabled Boolean       @default(false)
-  // [{ label: string, hex: "#rrggbb" }], max 4 — enforced by Zod, not the DB
   customizationColorOptions Json          @default("[]")
   // AI preview: lets a customer see their personalization on the product before
-  // buying. Needs customizationNameEnabled. Prompt blanks: {name} {initial} {colour};
+  // buying. Needs a text personalization field. Prompt blanks: {name} {initial} {colour};
   // empty = the shared default prompt.
   previewEnabled            Boolean       @default(false)
+  // Which personalization fields (by id) feed the preview: the customer's name
+  // (a text field — required when the preview is on), an optional text field
+  // overriding the initial, and an optional dropdown whose chosen swatch colour
+  // overrides the variant's colour.
+  previewNameFieldId        String?
+  previewInitialFieldId     String?
+  previewColourFieldId      String?
   previewPrompt             String        @default("")
   // Max previews one visitor may generate per product per 24h
   previewLimit              Int           @default(5)
@@ -298,8 +308,12 @@ model CartItem {
   cartId           String
   variantId        String
   quantity         Int
-  // Personalization for this line — two lines for the same variant can
-  // coexist when these differ (e.g. two different printed names).
+  // Personalization for this line: [{ fieldId, label, type, value, hex? }].
+  // `customizationKey` is its canonical form — two lines for the same variant
+  // coexist when it differs (e.g. two different printed names).
+  personalization    Json    @default("[]")
+  customizationKey   String  @default("")
+  // DEPRECATED (2026-10): superseded by personalization; nothing reads/writes them.
   customName       String?
   customColorLabel String?
   customColorHex   String?
@@ -307,7 +321,7 @@ model CartItem {
   cart    Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
   variant Variant @relation(fields: [variantId], references: [id], onDelete: Cascade)
 
-  @@index([cartId, variantId])
+  @@index([cartId, variantId, customizationKey])
   @@map("cart_items")
 }
 
@@ -351,6 +365,9 @@ model OrderItem {
   titleSnapshot            String
   priceSnapshot            Int // integer cents at time of order
   quantity                 Int
+  // [{ fieldId, label, type, value, hex? }] — copied from the cart line at order time.
+  personalization          Json    @default("[]")
+  // DEPRECATED (2026-10): superseded by personalization; nothing reads/writes them.
   customNameSnapshot       String?
   customColorLabelSnapshot String?
   customColorHexSnapshot   String?

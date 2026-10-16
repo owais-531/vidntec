@@ -101,6 +101,7 @@ export class StripeWebhookService {
                 titleSnapshot: l.titleSnapshot,
                 priceSnapshot: l.priceSnapshot,
                 quantity: l.quantity,
+                personalization: (l.personalization ?? []) as unknown as Prisma.InputJsonValue,
               })),
             },
           },

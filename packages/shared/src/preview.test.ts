@@ -67,11 +67,15 @@ describe('product preview fields', () => {
     expect(p).toMatchObject({ previewEnabled: false, previewPrompt: '', previewLimit: 5 });
   });
 
-  it('create: preview needs name personalization', () => {
+  it('create: preview needs a mapped text name field', () => {
     expect(createProductSchema.safeParse({ ...base, previewEnabled: true }).success).toBe(false);
     expect(
-      createProductSchema.safeParse({ ...base, previewEnabled: true, customizationNameEnabled: true })
-        .success,
+      createProductSchema.safeParse({
+        ...base,
+        previewEnabled: true,
+        previewNameFieldId: 'n',
+        personalizationFields: [{ id: 'n', type: 'text', label: 'Name' }],
+      }).success,
     ).toBe(true);
   });
 

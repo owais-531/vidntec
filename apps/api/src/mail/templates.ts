@@ -5,8 +5,7 @@ interface Line {
   titleSnapshot: string;
   priceSnapshot: number;
   quantity: number;
-  customNameSnapshot?: string | null;
-  customColorLabelSnapshot?: string | null;
+  personalization?: Array<{ label: string; value: string }>;
 }
 
 interface OrderEmailData {
@@ -32,8 +31,8 @@ const wrap = (title: string, body: string) => `
 function lineRows(items: Line[], currency: string): string {
   return items
     .map((l) => {
-      const personalization = [l.customNameSnapshot, l.customColorLabelSnapshot]
-        .filter(Boolean)
+      const personalization = (l.personalization ?? [])
+        .map((p) => `${p.label}: ${p.value}`)
         .join(', ');
       return `<tr>
         <td style="padding:6px 0">${escapeHtml(l.titleSnapshot)} × ${l.quantity}${

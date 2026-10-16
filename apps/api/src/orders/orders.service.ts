@@ -12,6 +12,7 @@ import type {
   OrderSummary,
 } from '@vidntec/shared';
 import type { OrderItem, Prisma } from '@vidntec/shared/prisma';
+import { toSelections } from '../products/products.mapper';
 import { PrismaService } from '../prisma/prisma.service';
 import { StripeService } from '../stripe/stripe.service';
 import { MailService } from '../mail/mail.service';
@@ -206,7 +207,7 @@ export class OrdersService {
       to: order.email,
       orderId: order.id,
       trackingNumber,
-      items: order.items,
+      items: order.items.map((i) => ({ ...i, personalization: toSelections(i.personalization) })),
       currency: order.currency,
     });
     return updated;

@@ -2,7 +2,8 @@ import type {
   AdminProduct,
   AdminProductListItem,
   AdminVariant,
-  CustomizationColorOption,
+  PersonalizationField,
+  PersonalizationSelection,
   ProductImageDto,
   ProductSpec,
 } from '@vidntec/shared';
@@ -13,8 +14,13 @@ export type ProductWithRelations = Prisma.ProductGetPayload<{
   include: { images: true; variants: true; category: true; previewReferences: true };
 }>;
 
-export function toColorOptions(value: Prisma.JsonValue): CustomizationColorOption[] {
-  return Array.isArray(value) ? (value as unknown as CustomizationColorOption[]) : [];
+export function toPersonalizationFields(value: Prisma.JsonValue): PersonalizationField[] {
+  return Array.isArray(value) ? (value as unknown as PersonalizationField[]) : [];
+}
+
+/** Stored cart/order-line answers: `[{ fieldId, label, type, value, hex? }]`. */
+export function toSelections(value: Prisma.JsonValue): PersonalizationSelection[] {
+  return Array.isArray(value) ? (value as unknown as PersonalizationSelection[]) : [];
 }
 
 export function toProductSpecs(value: Prisma.JsonValue): ProductSpec[] {
@@ -56,10 +62,11 @@ export function toAdminProduct(p: ProductWithRelations): AdminProduct {
     featured: p.featured,
     categoryId: p.categoryId,
     categoryName: p.category?.name ?? null,
-    customizationNameEnabled: p.customizationNameEnabled,
-    customizationColorEnabled: p.customizationColorEnabled,
-    customizationColorOptions: toColorOptions(p.customizationColorOptions),
+    personalizationFields: toPersonalizationFields(p.personalizationFields),
     previewEnabled: p.previewEnabled,
+    previewNameFieldId: p.previewNameFieldId,
+    previewInitialFieldId: p.previewInitialFieldId,
+    previewColourFieldId: p.previewColourFieldId,
     previewPrompt: p.previewPrompt,
     previewLimit: p.previewLimit,
     previewReferences: [...p.previewReferences]

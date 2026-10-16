@@ -16,6 +16,10 @@ export const previewNameSchema = z
 export const previewRequestSchema = z.object({
   variantId: z.string().cuid(),
   name: previewNameSchema,
+  /** Answer of the product's mapped "initial" field, if it has one. */
+  initial: z.string().trim().max(4).optional(),
+  /** Label of the choice picked in the product's mapped colour field — resolved to a hex server-side. */
+  colourChoice: z.string().trim().max(40).optional(),
   visitorKey: z.string().min(16).max(64),
 });
 export type PreviewRequest = z.infer<typeof previewRequestSchema>;
@@ -81,4 +85,36 @@ export function parsePreviewLetters(input: string): string[] {
 export function nameInitial(name: string): string {
   const first = name.trim().charAt(0);
   return first ? first.toLocaleUpperCase('en') : '';
+}
+
+/** Which personalization fields feed the preview (ids into `personalizationFields`). */
+export interface PreviewMapping {
+  enabled: boolean;
+  nameFieldId?: string | null;
+  initialFieldId?: string | null;
+  colourFieldId?: string | null;
+}
+
+/**
+ * Plain-words problem with a preview field mapping, or null when it's fine:
+ * the name must be a text field when the preview is on; the initial a text
+ * field; the colour a dropdown — and each mapped field must still exist.
+ */
+export function previewMappingProblem(
+  fields: ReadonlyArray<{ id: string; type: string; label: string }>,
+  m: PreviewMapping,
+): string | null {
+  const find = (id?: string | null) => (id ? fields.find((f) => f.id === id) : undefined);
+  const name = find(m.nameFieldId);
+  if (m.enabled && name?.type !== 'text') {
+    return 'Pick which text field is the customer’s name to use the preview';
+  }
+  if (m.initialFieldId && find(m.initialFieldId)?.type !== 'text') {
+    return 'The “initial” for the preview must be a text field';
+  }
+  if (m.colourFieldId && find(m.colourFieldId)?.type !== 'dropdown') {
+    return 'The “colour” for the preview must be a dropdown field';
+  }
+  if (m.nameFieldId && !name) return 'The preview’s name field no longer exists';
+  return null;
 }

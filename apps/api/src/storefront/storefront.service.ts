@@ -6,7 +6,7 @@ import type {
 } from '@vidntec/shared';
 import { Prisma } from '@vidntec/shared/prisma';
 import { PrismaService } from '../prisma/prisma.service';
-import { toColorOptions, toProductSpecs } from '../products/products.mapper';
+import { toPersonalizationFields, toProductSpecs } from '../products/products.mapper';
 
 const ACTIVE = { status: 'active' } as const satisfies Prisma.ProductWhereInput;
 
@@ -159,10 +159,11 @@ export class StorefrontService {
       category: product.category
         ? { name: product.category.name, slug: product.category.slug }
         : null,
-      customizationNameEnabled: product.customizationNameEnabled,
-      customizationColorEnabled: product.customizationColorEnabled,
-      customizationColorOptions: toColorOptions(product.customizationColorOptions),
+      personalizationFields: toPersonalizationFields(product.personalizationFields),
       previewEnabled: product.previewEnabled,
+      previewNameFieldId: product.previewNameFieldId,
+      previewInitialFieldId: product.previewInitialFieldId,
+      previewColourFieldId: product.previewColourFieldId,
       specs: toProductSpecs(product.specs),
       images: [...product.images]
         .sort((a, b) => a.position - b.position)

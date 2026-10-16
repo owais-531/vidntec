@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type {
-  CustomizationColorOption,
+  PersonalizationField,
   MediaType,
   ProductSpec,
   PublicVariant,
@@ -24,10 +24,9 @@ export function ProductViewer({
   scope,
   images,
   variants,
-  customizationNameEnabled,
-  customizationColorEnabled,
-  customizationColorOptions,
+  personalizationFields,
   previewEnabled,
+  previewFields,
   productSlug,
   specs,
   productUrl,
@@ -37,10 +36,9 @@ export function ProductViewer({
   scope: string;
   images: Media[];
   variants: PublicVariant[];
-  customizationNameEnabled: boolean;
-  customizationColorEnabled: boolean;
-  customizationColorOptions: CustomizationColorOption[];
+  personalizationFields: PersonalizationField[];
   previewEnabled: boolean;
+  previewFields: { nameId: string | null; initialId: string | null; colourId: string | null };
   productSlug: string;
   specs: ProductSpec[];
   productUrl: string;
@@ -56,10 +54,10 @@ export function ProductViewer({
         <div className="mt-6">
           <VariantPicker
             variants={variants}
-            customizationNameEnabled={customizationNameEnabled}
-            customizationColorEnabled={customizationColorEnabled}
-            customizationColorOptions={customizationColorOptions}
+            productTitle={title}
+            personalizationFields={personalizationFields}
             previewEnabled={previewEnabled}
+            previewFields={previewFields}
             productSlug={productSlug}
             onVariantChange={setSelectedVariantId}
             productUrl={productUrl}

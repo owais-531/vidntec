@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { ORDER_STATUSES } from '../constants';
 import { shippingAddressSchema } from './common';
+import { personalizationSelectionSchema } from './personalization';
 
 export const orderItemSchema = z.object({
   id: z.string(),
@@ -9,9 +10,7 @@ export const orderItemSchema = z.object({
   priceSnapshot: z.number().int(),
   quantity: z.number().int(),
   lineTotal: z.number().int(),
-  customNameSnapshot: z.string().nullable(),
-  customColorLabelSnapshot: z.string().nullable(),
-  customColorHexSnapshot: z.string().nullable(),
+  personalization: z.array(personalizationSelectionSchema),
 });
 export type OrderItemDto = z.infer<typeof orderItemSchema>;
 

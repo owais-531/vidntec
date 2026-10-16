@@ -13,6 +13,7 @@ import {
   type OrdersExportQuery,
 } from '@vidntec/shared';
 import { PrismaService } from '../prisma/prisma.service';
+import { toSelections } from '../products/products.mapper';
 import { money, toCsv, type CsvCell } from './csv';
 import { addDays, formatStoreDateTime, parseStoreDay, startOfStoreDay, STORE_TZ } from './dates';
 
@@ -274,12 +275,13 @@ export class ManagerService {
           i.quantity,
           money(i.priceSnapshot),
           money(i.priceSnapshot * i.quantity),
-          i.customNameSnapshot,
-          i.customColorLabelSnapshot,
+          toSelections(i.personalization)
+            .map((p) => `${p.label}: ${p.value}`)
+            .join('; '),
         ]),
       );
       return toCsv(
-        [...orderHeader, 'Item', 'Qty', 'Unit price (PKR)', 'Line total (PKR)', 'Personalized name', 'Color'],
+        [...orderHeader, 'Item', 'Qty', 'Unit price (PKR)', 'Line total (PKR)', 'Personalization'],
         rows,
       );
     }

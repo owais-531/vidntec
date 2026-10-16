@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import { centsSchema, slugSchema } from './common';
 import { publicProductCategorySchema } from './category';
-import { adminPreviewReferenceSchema } from './preview';
+import { adminPreviewReferenceSchema, previewMappingProblem } from './preview';
+import { personalizationFieldsSchema } from './personalization';
 import {
-  CUSTOMIZATION_MAX_COLOR_OPTIONS,
   MEDIA_TYPES,
   PREVIEW_DEFAULT_LIMIT,
   PREVIEW_MAX_LIMIT,
@@ -20,6 +20,9 @@ const previewPromptSchema = z
   .string()
   .max(PREVIEW_PROMPT_MAX_CHARS)
   .refine((v) => v.trim() === '' || v.includes('{name}'), 'The prompt must include {name}');
+
+/** Reference to a personalization field id: id to set, null to clear, omitted = unchanged. */
+const fieldRefSchema = z.string().max(32).nullable().optional();
 
 /** "#rrggbb" */
 export const hexColorSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/, 'must be a hex color like #8a1a1c');
@@ -44,17 +47,6 @@ export type VariantUpdate = z.infer<typeof variantUpdateSchema>;
 /** Category assignment: a cuid to assign, `null` to clear, omitted to leave unchanged. */
 const categoryIdSchema = z.string().cuid().nullable().optional();
 
-/** One admin-defined color a customer can pick for a customizable product. */
-export const customizationColorOptionSchema = z.object({
-  label: z.string().min(1).max(40),
-  hex: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'must be a hex color like #8a1a1c'),
-});
-export type CustomizationColorOption = z.infer<typeof customizationColorOptionSchema>;
-
-export const customizationColorOptionsSchema = z
-  .array(customizationColorOptionSchema)
-  .max(CUSTOMIZATION_MAX_COLOR_OPTIONS);
-
 /** One admin-entered "Details" row on a product — freeform, not a fixed attribute set. */
 export const productSpecSchema = z.object({
   label: z.string().min(1).max(80),
@@ -63,20 +55,6 @@ export const productSpecSchema = z.object({
 export type ProductSpec = z.infer<typeof productSpecSchema>;
 
 export const productSpecsSchema = z.array(productSpecSchema).max(PRODUCT_SPEC_MAX_ROWS);
-
-/** Shared by create/update: color options are required once color customization is on. */
-function requireColorOptionsWhenEnabled(
-  data: { customizationColorEnabled?: boolean; customizationColorOptions?: unknown[] },
-  ctx: z.RefinementCtx,
-): void {
-  if (data.customizationColorEnabled && !data.customizationColorOptions?.length) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'Add at least one color option',
-      path: ['customizationColorOptions'],
-    });
-  }
-}
 
 export const createProductSchema = z
   .object({
@@ -88,23 +66,25 @@ export const createProductSchema = z
     status: z.enum(PRODUCT_STATUSES).default('draft'),
     featured: z.boolean().optional(),
     categoryId: categoryIdSchema,
-    customizationNameEnabled: z.boolean().default(false),
-    customizationColorEnabled: z.boolean().default(false),
-    customizationColorOptions: customizationColorOptionsSchema.default([]),
+    personalizationFields: personalizationFieldsSchema.default([]),
     previewEnabled: z.boolean().default(false),
+    previewNameFieldId: fieldRefSchema,
+    previewInitialFieldId: fieldRefSchema,
+    previewColourFieldId: fieldRefSchema,
     previewPrompt: previewPromptSchema.default(''),
     previewLimit: z.number().int().min(1).max(PREVIEW_MAX_LIMIT).default(PREVIEW_DEFAULT_LIMIT),
     specs: productSpecsSchema.default([]),
     variants: z.array(variantInputSchema).min(1, 'a product needs at least one variant'),
   })
-  .superRefine(requireColorOptionsWhenEnabled)
   .superRefine((data, ctx) => {
-    if (data.previewEnabled && !data.customizationNameEnabled) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Turn on "printed name" personalization to use the preview',
-        path: ['previewEnabled'],
-      });
+    const problem = previewMappingProblem(data.personalizationFields, {
+      enabled: data.previewEnabled,
+      nameFieldId: data.previewNameFieldId,
+      initialFieldId: data.previewInitialFieldId,
+      colourFieldId: data.previewColourFieldId,
+    });
+    if (problem) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: problem, path: ['previewEnabled'] });
     }
   });
 export type CreateProductInput = z.infer<typeof createProductSchema>;
@@ -118,15 +98,15 @@ export const updateProductSchema = z
     status: z.enum(PRODUCT_STATUSES).optional(),
     featured: z.boolean().optional(),
     categoryId: categoryIdSchema,
-    customizationNameEnabled: z.boolean().optional(),
-    customizationColorEnabled: z.boolean().optional(),
-    customizationColorOptions: customizationColorOptionsSchema.optional(),
+    personalizationFields: personalizationFieldsSchema.optional(),
     previewEnabled: z.boolean().optional(),
+    previewNameFieldId: fieldRefSchema,
+    previewInitialFieldId: fieldRefSchema,
+    previewColourFieldId: fieldRefSchema,
     previewPrompt: previewPromptSchema.optional(),
     previewLimit: z.number().int().min(1).max(PREVIEW_MAX_LIMIT).optional(),
     specs: productSpecsSchema.optional(),
-  })
-  .superRefine(requireColorOptionsWhenEnabled);
+  });
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;
 
 export const stockAdjustmentSchema = z.object({
@@ -211,10 +191,11 @@ export const adminProductSchema = z.object({
   featured: z.boolean(),
   categoryId: z.string().nullable(),
   categoryName: z.string().nullable(),
-  customizationNameEnabled: z.boolean(),
-  customizationColorEnabled: z.boolean(),
-  customizationColorOptions: customizationColorOptionsSchema,
+  personalizationFields: personalizationFieldsSchema,
   previewEnabled: z.boolean(),
+  previewNameFieldId: z.string().nullable(),
+  previewInitialFieldId: z.string().nullable(),
+  previewColourFieldId: z.string().nullable(),
   previewPrompt: z.string(),
   previewLimit: z.number().int(),
   previewReferences: z.array(adminPreviewReferenceSchema),
@@ -331,11 +312,12 @@ export const publicProductSchema = z.object({
   scope: z.string(),
   featured: z.boolean(),
   category: publicProductCategorySchema.nullable(),
-  customizationNameEnabled: z.boolean(),
-  customizationColorEnabled: z.boolean(),
-  customizationColorOptions: customizationColorOptionsSchema,
+  personalizationFields: personalizationFieldsSchema,
   /** The product page offers the AI "Preview" button next to the name field. */
   previewEnabled: z.boolean(),
+  previewNameFieldId: z.string().nullable(),
+  previewInitialFieldId: z.string().nullable(),
+  previewColourFieldId: z.string().nullable(),
   specs: productSpecsSchema,
   images: z.array(
     z.object({

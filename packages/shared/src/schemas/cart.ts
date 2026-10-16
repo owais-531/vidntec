@@ -1,17 +1,12 @@
 import { z } from 'zod';
-import { CUSTOMIZATION_NAME_MAX_LENGTH, MAX_CART_ITEM_QUANTITY } from '../constants';
+import { MAX_CART_ITEM_QUANTITY } from '../constants';
+import { personalizationInputSchema, personalizationSelectionSchema } from './personalization';
 
 export const addCartItemSchema = z.object({
   variantId: z.string().cuid(),
   quantity: z.number().int().min(1).max(MAX_CART_ITEM_QUANTITY).default(1),
-  /** Printed name, when the product has personalization enabled. */
-  customName: z.string().trim().min(1).max(CUSTOMIZATION_NAME_MAX_LENGTH).optional(),
-  /**
-   * Label of the chosen color option, when the product has color personalization
-   * enabled. The server resolves this to the admin's own hex for that label —
-   * a client-sent hex is never trusted.
-   */
-  customColorLabel: z.string().min(1).max(40).optional(),
+  /** Answers to the product's personalization fields, keyed by field id. Validated server-side. */
+  personalization: personalizationInputSchema.default({}),
 });
 export type AddCartItemInput = z.infer<typeof addCartItemSchema>;
 
@@ -40,9 +35,7 @@ export const cartLineSchema = z.object({
   maxQuantity: z.number().int(),
   /** true when the stored quantity now exceeds available stock */
   exceedsStock: z.boolean(),
-  customName: z.string().nullable(),
-  customColorLabel: z.string().nullable(),
-  customColorHex: z.string().nullable(),
+  personalization: z.array(personalizationSelectionSchema),
 });
 export type CartLine = z.infer<typeof cartLineSchema>;
 

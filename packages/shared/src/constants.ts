@@ -64,8 +64,16 @@ export const MAX_CART_ITEM_QUANTITY = 99;
 /** Max characters for a customer's personalized text/name on a customizable product. */
 export const CUSTOMIZATION_NAME_MAX_LENGTH = 40;
 
-/** Max admin-defined text-color options for a customizable product. */
-export const CUSTOMIZATION_MAX_COLOR_OPTIONS = 4;
+/** Admin-defined personalization fields ("Make it yours") per product. */
+export const PERSONALIZATION_FIELD_TYPES = ['text', 'dropdown', 'checkbox'] as const;
+export type PersonalizationFieldType = (typeof PERSONALIZATION_FIELD_TYPES)[number];
+export const PERSONALIZATION_MAX_FIELDS = 8;
+export const PERSONALIZATION_MAX_CHOICES = 20;
+/** Default and hard cap for a text field's max length. */
+export const PERSONALIZATION_TEXT_DEFAULT_MAX = 40;
+export const PERSONALIZATION_TEXT_HARD_MAX = 100;
+/** What a ticked checkbox is stored as on carts/orders. */
+export const PERSONALIZATION_CHECKED_VALUE = 'Yes';
 
 /**
  * AI preview (customer sees their personalization on the product before buying).

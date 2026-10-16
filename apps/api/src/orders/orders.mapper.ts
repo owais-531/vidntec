@@ -5,6 +5,7 @@ import type {
   ShippingAddress,
 } from '@vidntec/shared';
 import type { Order, OrderItem, Prisma } from '@vidntec/shared/prisma';
+import { toSelections } from '../products/products.mapper';
 
 export type OrderWithItems = Order & { items: OrderItem[] };
 
@@ -31,9 +32,7 @@ export function toOrderDetail(order: OrderWithItems): OrderDetail {
       priceSnapshot: i.priceSnapshot,
       quantity: i.quantity,
       lineTotal: i.priceSnapshot * i.quantity,
-      customNameSnapshot: i.customNameSnapshot,
-      customColorLabelSnapshot: i.customColorLabelSnapshot,
-      customColorHexSnapshot: i.customColorHexSnapshot,
+      personalization: toSelections(i.personalization),
     })),
   };
 }

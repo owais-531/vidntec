@@ -185,37 +185,50 @@ describe('ProductsService category assignment', () => {
 
 describe('ProductsService preview rules', () => {
   let ctx: ReturnType<typeof make>;
+  const nameField = { id: 'n', type: 'text', label: 'Name', required: true, placeholder: '', maxLength: 40 };
+  const stored = (over: Record<string, unknown> = {}) => ({
+    previewEnabled: false,
+    personalizationFields: [],
+    previewNameFieldId: null,
+    previewInitialFieldId: null,
+    previewColourFieldId: null,
+    ...over,
+  });
   beforeEach(() => {
     ctx = make();
   });
 
-  it('rejects turning the preview on while name personalization is off', async () => {
-    ctx.prisma.product.findUnique.mockResolvedValueOnce({
-      previewEnabled: false,
-      customizationNameEnabled: false,
-    });
+  it('rejects turning the preview on without a name field picked', async () => {
+    ctx.prisma.product.findUnique.mockResolvedValueOnce(stored({ personalizationFields: [nameField] }));
     await expect(ctx.service.update('p1', { previewEnabled: true })).rejects.toThrow(
-      'Turn on "printed name" personalization',
+      'Pick which text field',
     );
     expect(ctx.prisma.product.update).not.toHaveBeenCalled();
   });
 
-  it('allows the preview when name personalization is switched on in the same save', async () => {
-    ctx.prisma.product.findUnique.mockResolvedValueOnce({
-      previewEnabled: false,
-      customizationNameEnabled: false,
+  it('allows the preview when a text field is added and picked in the same save', async () => {
+    ctx.prisma.product.findUnique.mockResolvedValueOnce(stored());
+    await ctx.service.update('p1', {
+      previewEnabled: true,
+      previewNameFieldId: 'n',
+      personalizationFields: [nameField],
     });
-    await ctx.service.update('p1', { previewEnabled: true, customizationNameEnabled: true });
     expect(ctx.prisma.product.update).toHaveBeenCalled();
   });
 
-  it('rejects switching name personalization off while the preview is on', async () => {
-    ctx.prisma.product.findUnique.mockResolvedValueOnce({
-      previewEnabled: true,
-      customizationNameEnabled: true,
-    });
+  it('rejects removing the mapped name field while the preview is on', async () => {
+    ctx.prisma.product.findUnique.mockResolvedValueOnce(
+      stored({ previewEnabled: true, previewNameFieldId: 'n', personalizationFields: [nameField] }),
+    );
+    await expect(ctx.service.update('p1', { personalizationFields: [] })).rejects.toThrow(
+      'Pick which text field',
+    );
+  });
+
+  it('rejects a colour mapping that is not a dropdown', async () => {
+    ctx.prisma.product.findUnique.mockResolvedValueOnce(stored({ personalizationFields: [nameField] }));
     await expect(
-      ctx.service.update('p1', { customizationNameEnabled: false }),
-    ).rejects.toThrow('printed name');
+      ctx.service.update('p1', { previewColourFieldId: 'n' }),
+    ).rejects.toThrow('must be a dropdown');
   });
 });

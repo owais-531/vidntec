@@ -7,6 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { formatMoney, type CartLine, type CartView } from '@vidntec/shared';
 import { removeCartLineAction } from '@/lib/cart/actions';
 import { buttonClasses } from '@/components/ui/button';
+import { PersonalizationSummary } from '@/components/personalization-summary';
 import { toast } from '@/components/ui/toast';
 import { GiftProgressBanner } from './gift-progress-banner';
 
@@ -230,23 +231,7 @@ function DesktopDrawer({ ctx }: { ctx: CartDrawerContextValue }) {
                       {line.productTitle}
                     </Link>
                     <p className="text-xs text-ink-muted">{line.variantName}</p>
-                    {line.customName || line.customColorLabel ? (
-                      <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-ink-soft">
-                        {line.customName ? <span>“{line.customName}”</span> : null}
-                        {line.customColorLabel ? (
-                          <span className="inline-flex items-center gap-1">
-                            {line.customColorHex ? (
-                              <span
-                                className="h-2.5 w-2.5 rounded-full border border-paper-line"
-                                style={{ backgroundColor: line.customColorHex }}
-                                aria-hidden
-                              />
-                            ) : null}
-                            {line.customColorLabel}
-                          </span>
-                        ) : null}
-                      </p>
-                    ) : null}
+                    <PersonalizationSummary selections={line.personalization} />
                     <p className="mt-1 text-xs text-ink-soft">
                       {line.quantity} × {formatMoney(line.unitPrice)}
                     </p>

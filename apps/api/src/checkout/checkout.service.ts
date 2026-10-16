@@ -10,6 +10,7 @@ import {
   type CheckoutInput,
   type CheckoutResult,
   type CheckoutSessionStatus,
+  type PersonalizationSelection,
   type Quote,
 } from '@vidntec/shared';
 import { Prisma } from '@vidntec/shared/prisma';
@@ -19,6 +20,7 @@ import { StripeService } from '../stripe/stripe.service';
 import { SettingsService } from '../settings/settings.service';
 import { ShippingService } from '../shipping/shipping.service';
 import { MailService } from '../mail/mail.service';
+import { toSelections } from '../products/products.mapper';
 import type { Env } from '../config/env';
 
 export interface OrderLineSnapshot {
@@ -26,9 +28,7 @@ export interface OrderLineSnapshot {
   titleSnapshot: string;
   priceSnapshot: number;
   quantity: number;
-  customNameSnapshot: string | null;
-  customColorLabelSnapshot: string | null;
-  customColorHexSnapshot: string | null;
+  personalization: PersonalizationSelection[];
 }
 
 interface OrderPlan {
@@ -154,9 +154,7 @@ export class CheckoutService {
         titleSnapshot: `${variant.product.title} — ${variant.name}`,
         priceSnapshot: variant.price,
         quantity: item.quantity,
-        customNameSnapshot: item.customName,
-        customColorLabelSnapshot: item.customColorLabel,
-        customColorHexSnapshot: item.customColorHex,
+        personalization: toSelections(item.personalization),
       });
     }
 
@@ -215,7 +213,12 @@ export class CheckoutService {
           tax: plan.tax,
           total: plan.total,
           shippingAddress: input.shippingAddress as Prisma.InputJsonValue,
-          items: { create: plan.lines },
+          items: {
+            create: plan.lines.map((l) => ({
+              ...l,
+              personalization: l.personalization as unknown as Prisma.InputJsonValue,
+            })),
+          },
         },
       });
 

@@ -4,10 +4,19 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { MAX_CART_ITEM_QUANTITY, type CartLine, type CartView } from '@vidntec/shared';
+import {
+  MAX_CART_ITEM_QUANTITY,
+  personalizationKey,
+  resolvePersonalization,
+  type CartLine,
+  type CartView,
+  type PersonalizationField,
+  type PersonalizationInput,
+  type PersonalizationSelection,
+} from '@vidntec/shared';
 import type { Cart, CartItem, Prisma } from '@vidntec/shared/prisma';
 import { PrismaService } from '../prisma/prisma.service';
-import { toColorOptions } from '../products/products.mapper';
+import { toPersonalizationFields, toSelections } from '../products/products.mapper';
 
 type GuestCartWithItems = Cart & { items: CartItem[] };
 
@@ -18,22 +27,9 @@ interface ResolvedCart {
   cookie: string | null;
 }
 
-/** The customer-supplied side of personalization, before server-side resolution. */
-export interface PersonalizationInput {
-  customName?: string;
-  customColorLabel?: string;
-}
-
-/** The stored/snapshot shape once resolved against the product's own config. */
-interface ResolvedPersonalization {
-  customName: string | null;
-  customColorLabel: string | null;
-  customColorHex: string | null;
-}
-
-/** Distinguishes cart lines for the same variant that differ only by personalization. */
-function personalizationKey(item: ResolvedPersonalization & { variantId: string }): string {
-  return `${item.variantId}::${item.customName ?? ''}::${item.customColorLabel ?? ''}::${item.customColorHex ?? ''}`;
+/** Key for "same variant + same personalization" — what merges two cart lines into one. */
+function mergeKey(item: { variantId: string; customizationKey: string }): string {
+  return `${item.variantId}::${item.customizationKey}`;
 }
 
 @Injectable()
@@ -114,10 +110,10 @@ export class CartService {
         userCartId ?? (await tx.cart.create({ data: { userId }, select: { id: true } })).id;
 
       const targetItems = await tx.cartItem.findMany({ where: { cartId: targetId } });
-      const byKey = new Map(targetItems.map((i) => [personalizationKey(i), i]));
+      const byKey = new Map(targetItems.map((i) => [mergeKey(i), i]));
 
       for (const item of guestCart.items) {
-        const existing = byKey.get(personalizationKey(item));
+        const existing = byKey.get(mergeKey(item));
         if (existing) {
           await tx.cartItem.update({
             where: { id: existing.id },
@@ -131,9 +127,8 @@ export class CartService {
               cartId: targetId,
               variantId: item.variantId,
               quantity: Math.min(item.quantity, MAX_CART_ITEM_QUANTITY),
-              customName: item.customName,
-              customColorLabel: item.customColorLabel,
-              customColorHex: item.customColorHex,
+              personalization: item.personalization ?? [],
+              customizationKey: item.customizationKey,
             },
           });
         }
@@ -185,9 +180,7 @@ export class CartService {
         availableStock: variant.stock,
         maxQuantity: Math.min(variant.stock, MAX_CART_ITEM_QUANTITY),
         exceedsStock: item.quantity > variant.stock,
-        customName: item.customName,
-        customColorLabel: item.customColorLabel,
-        customColorHex: item.customColorHex,
+        personalization: toSelections(item.personalization),
       });
     }
 
@@ -213,18 +206,13 @@ export class CartService {
     cartId: string,
     variantId: string,
     quantity: number,
-    personalization: PersonalizationInput = {},
+    answers: PersonalizationInput = {},
   ): Promise<void> {
     const variant = await this.prisma.variant.findUnique({
       where: { id: variantId },
       include: {
         product: {
-          select: {
-            status: true,
-            customizationNameEnabled: true,
-            customizationColorEnabled: true,
-            customizationColorOptions: true,
-          },
+          select: { status: true, personalizationFields: true },
         },
       },
     });
@@ -235,15 +223,17 @@ export class CartService {
       throw new ConflictException('That option is out of stock');
     }
 
-    const resolved = this.resolvePersonalization(variant.product, personalization);
+    const selections = this.resolveAnswers(
+      toPersonalizationFields(variant.product.personalizationFields),
+      answers,
+    );
+    const customizationKey = personalizationKey(selections);
 
     const existing = await this.prisma.cartItem.findFirst({
       where: {
         cartId,
         variantId,
-        customName: resolved.customName,
-        customColorLabel: resolved.customColorLabel,
-        customColorHex: resolved.customColorHex,
+        customizationKey,
       },
     });
     const target = Math.min(
@@ -259,7 +249,13 @@ export class CartService {
       });
     } else {
       await this.prisma.cartItem.create({
-        data: { cartId, variantId, quantity: target, ...resolved },
+        data: {
+          cartId,
+          variantId,
+          quantity: target,
+          personalization: selections as unknown as Prisma.InputJsonValue,
+          customizationKey,
+        },
       });
     }
   }
@@ -286,41 +282,17 @@ export class CartService {
   // ── helpers ───────────────────────────────────────────────────────────────
 
   /**
-   * Validates the customer's personalization choice against the product's own
-   * config and resolves it to what actually gets stored. Required fields that
-   * are missing/invalid throw — a customer can't skip personalization on a
-   * product that has it enabled. The color's hex always comes from the
-   * product's own options, never from the client.
+   * Validates the customer's answers against the product's own fields (required,
+   * max length, valid dropdown choice). A dropdown's hex always comes from the
+   * product's own choices, never from the client.
    */
-  private resolvePersonalization(
-    product: {
-      customizationNameEnabled: boolean;
-      customizationColorEnabled: boolean;
-      customizationColorOptions: Prisma.JsonValue;
-    },
-    input: PersonalizationInput,
-  ): ResolvedPersonalization {
-    let customName: string | null = null;
-    if (product.customizationNameEnabled) {
-      const trimmed = input.customName?.trim();
-      if (!trimmed) {
-        throw new BadRequestException('Please enter a name for this product');
-      }
-      customName = trimmed;
-    }
-
-    let customColorLabel: string | null = null;
-    let customColorHex: string | null = null;
-    if (product.customizationColorEnabled) {
-      const options = toColorOptions(product.customizationColorOptions);
-      const match = options.find((o) => o.label === input.customColorLabel);
-      if (!match) {
-        throw new BadRequestException('Please choose a color for this product');
-      }
-      customColorLabel = match.label;
-      customColorHex = match.hex;
-    }
-
-    return { customName, customColorLabel, customColorHex };
+  private resolveAnswers(
+    fields: PersonalizationField[],
+    answers: PersonalizationInput,
+  ): PersonalizationSelection[] {
+    const { selections, errors } = resolvePersonalization(fields, answers);
+    const first = Object.values(errors)[0];
+    if (first) throw new BadRequestException(first);
+    return selections;
   }
 }

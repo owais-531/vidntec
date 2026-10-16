@@ -4,9 +4,10 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useTransition } from 'react';
 import {
-  CUSTOMIZATION_NAME_MAX_LENGTH,
   formatMoney,
-  type CustomizationColorOption,
+  resolvePersonalization,
+  type PersonalizationField,
+  type PersonalizationInput,
   type PublicVariant,
 } from '@vidntec/shared';
 import { cn } from '@/lib/cn';
@@ -15,26 +16,28 @@ import { generatePreviewAction } from '@/lib/actions/preview';
 import { useCartDrawer } from './cart-drawer';
 import { whatsappUrl } from '@/lib/whatsapp';
 import { Button, buttonClasses } from '@/components/ui/button';
-import { Input } from '@/components/ui/field';
 import { toast } from '@/components/ui/toast';
 import { WhatsappIcon } from './whatsapp-icon';
+import { PersonalizationForm } from './personalization-form';
 
 export function VariantPicker({
   variants,
-  customizationNameEnabled = false,
-  customizationColorEnabled = false,
-  customizationColorOptions = [],
+  productTitle,
+  personalizationFields = [],
   previewEnabled = false,
+  previewFields = { nameId: null, initialId: null, colourId: null },
   productSlug,
   onVariantChange,
   productUrl,
 }: {
   variants: PublicVariant[];
-  customizationNameEnabled?: boolean;
-  customizationColorEnabled?: boolean;
-  customizationColorOptions?: CustomizationColorOption[];
-  /** Offer the AI "Preview" button next to the name field (needs the name field). */
+  productTitle: string;
+  /** Admin-defined "Make it yours" fields; empty = product has no personalization. */
+  personalizationFields?: PersonalizationField[];
+  /** Offer the AI "Preview" button under the product's name field. */
   previewEnabled?: boolean;
+  /** Which personalization field ids feed the preview (set in admin). */
+  previewFields?: { nameId: string | null; initialId: string | null; colourId: string | null };
   productSlug: string;
   /** Fires with the selected variant's id, including once for the initial default. */
   onVariantChange?: (variantId: string) => void;
@@ -47,8 +50,8 @@ export function VariantPicker({
   );
   const cartDrawer = useCartDrawer();
   const [qty, setQty] = useState(1);
-  const [customName, setCustomName] = useState('');
-  const [customColorLabel, setCustomColorLabel] = useState('');
+  const [answers, setAnswers] = useState<PersonalizationInput>({});
+  const [answerErrors, setAnswerErrors] = useState<Record<string, string>>({});
   const [preview, setPreview] = useState<{
     status: 'idle' | 'loading' | 'done' | 'error';
     image?: string;
@@ -67,8 +70,15 @@ export function VariantPicker({
   if (!selected) return null;
 
   const maxQty = Math.max(1, Math.min(selected.stock, 99));
-  const showPreview = previewEnabled && customizationNameEnabled;
-  const previewKey = `${customName.trim()}|${selected.id}`;
+  // The preview reads the fields the admin mapped: name, optional initial, optional colour.
+  const nameField = personalizationFields.find(
+    (f) => f.type === 'text' && f.id === previewFields.nameId,
+  );
+  const customName = nameField ? (answers[nameField.id] ?? '') : '';
+  const initialAnswer = previewFields.initialId ? (answers[previewFields.initialId] ?? '').trim() : '';
+  const colourAnswer = previewFields.colourId ? (answers[previewFields.colourId] ?? '') : '';
+  const showPreview = previewEnabled && !!nameField;
+  const previewKey = `${customName.trim()}|${initialAnswer}|${colourAnswer}|${selected.id}`;
   const previewStale = preview.status === 'done' && preview.key !== previewKey;
 
   const makePreview = () => {
@@ -80,7 +90,10 @@ export function VariantPicker({
     const key = previewKey;
     setPreview((p) => ({ ...p, status: 'loading', error: undefined }));
     startTransition(async () => {
-      const res = await generatePreviewAction(productSlug, selected.id, name);
+      const res = await generatePreviewAction(productSlug, selected.id, name, {
+        ...(initialAnswer ? { initial: initialAnswer } : {}),
+        ...(colourAnswer ? { colourChoice: colourAnswer } : {}),
+      });
       if (res.ok) {
         setPreview({ status: 'done', image: res.data.imageDataUrl, key, remaining: res.data.remaining });
       } else {
@@ -93,20 +106,25 @@ export function VariantPicker({
     });
   };
 
+  const setAnswer = (fieldId: string, value: string) => {
+    setAnswers((a) => ({ ...a, [fieldId]: value }));
+    setAnswerErrors((e) => {
+      if (!e[fieldId]) return e;
+      const { [fieldId]: _drop, ...rest } = e;
+      return rest;
+    });
+  };
+
   const addToCart = () => {
-    if (customizationNameEnabled && !customName.trim()) {
-      toast('Please enter a name to personalize this product', 'error');
+    const { errors } = resolvePersonalization(personalizationFields, answers);
+    if (Object.keys(errors).length > 0) {
+      setAnswerErrors(errors);
+      toast(Object.values(errors)[0]!, 'error');
       return;
     }
-    if (customizationColorEnabled && !customColorLabel) {
-      toast('Please choose a color', 'error');
-      return;
-    }
+    setAnswerErrors({});
     startTransition(async () => {
-      const res = await addToCartAction(selected.id, qty, {
-        customName: customizationNameEnabled ? customName.trim() : undefined,
-        customColorLabel: customizationColorEnabled ? customColorLabel : undefined,
-      });
+      const res = await addToCartAction(selected.id, qty, answers);
       if (res.ok) {
         cartDrawer?.showAdded(res.data, selected.id);
         router.refresh();
@@ -172,105 +190,71 @@ export function VariantPicker({
         )}
       </p>
 
-      {customizationNameEnabled ? (
-        <div>
-          <label
-            htmlFor="custom-name"
-            className="mb-2 block text-xs font-medium uppercase tracking-wide text-ink-muted"
-          >
-            Personalize with a name
-          </label>
-          <Input
-            id="custom-name"
-            value={customName}
-            onChange={(e) => setCustomName(e.target.value.slice(0, CUSTOMIZATION_NAME_MAX_LENGTH))}
-            placeholder="e.g. Ayesha"
-            maxLength={CUSTOMIZATION_NAME_MAX_LENGTH}
-          />
-          {showPreview ? (
-            <div className="mt-3 space-y-3">
-              <Button
-                type="button"
-                variant="secondary"
-                className="w-full"
-                onClick={makePreview}
-                disabled={preview.status === 'loading' || !customName.trim()}
-              >
-                {preview.status === 'loading'
-                  ? 'Creating your preview…'
-                  : preview.status === 'done'
-                    ? 'Preview again'
-                    : 'Preview with this name'}
-              </Button>
+      <PersonalizationForm
+        productTitle={productTitle}
+        fields={personalizationFields}
+        values={answers}
+        onChange={setAnswer}
+        errors={answerErrors}
+        renderAfter={(field) =>
+          field.id === nameField?.id ? (
+            <>
+              {showPreview ? (
+                <div className="mt-3 space-y-3">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="w-full"
+                    onClick={makePreview}
+                    disabled={preview.status === 'loading' || !customName.trim()}
+                  >
+                    {preview.status === 'loading'
+                      ? 'Creating your preview…'
+                      : preview.status === 'done'
+                        ? 'Preview again'
+                        : 'Preview with this name'}
+                  </Button>
 
-              {preview.status === 'loading' ? (
-                <div
-                  className="flex aspect-[2/3] w-full max-w-xs animate-pulse flex-col items-center justify-center gap-2 rounded-card border border-paper-line bg-paper-sunken p-4 text-center"
-                  role="status"
-                >
-                  <span className="text-sm font-medium text-ink-soft">Creating your preview…</span>
-                  <span className="text-xs text-ink-muted">This takes about 20 seconds.</span>
+                  {preview.status === 'loading' ? (
+                    <div
+                      className="flex aspect-[2/3] w-full max-w-xs animate-pulse flex-col items-center justify-center gap-2 rounded-card border border-paper-line bg-paper-sunken p-4 text-center"
+                      role="status"
+                    >
+                      <span className="text-sm font-medium text-ink-soft">Creating your preview…</span>
+                      <span className="text-xs text-ink-muted">This takes about 20 seconds.</span>
+                    </div>
+                  ) : null}
+
+                  {preview.status === 'error' ? (
+                    <p className="rounded-card bg-brand-50 px-3 py-2 text-xs text-brand-700">{preview.error}</p>
+                  ) : null}
+
+                  {preview.image && preview.status !== 'loading' ? (
+                    <figure className="max-w-xs space-y-2">
+                      <Image
+                        src={preview.image}
+                        alt={`Preview of this product personalized with the name ${customName.trim()}`}
+                        width={512}
+                        height={768}
+                        unoptimized
+                        className="h-auto w-full rounded-card border border-paper-line bg-white"
+                      />
+                      <figcaption className="text-xs text-ink-muted">
+                        {previewStale
+                          ? 'This preview is for a different name or option — click “Preview again” to update it.'
+                          : 'AI-generated preview — your final product may vary slightly.'}
+                        {typeof preview.remaining === 'number'
+                          ? ` ${preview.remaining} preview${preview.remaining === 1 ? '' : 's'} left today.`
+                          : null}
+                      </figcaption>
+                    </figure>
+                  ) : null}
                 </div>
               ) : null}
-
-              {preview.status === 'error' ? (
-                <p className="rounded-card bg-brand-50 px-3 py-2 text-xs text-brand-700">{preview.error}</p>
-              ) : null}
-
-              {preview.image && preview.status !== 'loading' ? (
-                <figure className="max-w-xs space-y-2">
-                  <Image
-                    src={preview.image}
-                    alt={`Preview of this product personalized with the name ${customName.trim()}`}
-                    width={512}
-                    height={768}
-                    unoptimized
-                    className="h-auto w-full rounded-card border border-paper-line bg-white"
-                  />
-                  <figcaption className="text-xs text-ink-muted">
-                    {previewStale
-                      ? 'This preview is for a different name or option — click “Preview again” to update it.'
-                      : 'AI-generated preview — your final product may vary slightly.'}
-                    {typeof preview.remaining === 'number'
-                      ? ` ${preview.remaining} preview${preview.remaining === 1 ? '' : 's'} left today.`
-                      : null}
-                  </figcaption>
-                </figure>
-              ) : null}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-
-      {customizationColorEnabled ? (
-        <div>
-          <span className="mb-2 block text-xs font-medium uppercase tracking-wide text-ink-muted">
-            Color
-          </span>
-          <div className="flex flex-wrap gap-2">
-            {customizationColorOptions.map((c) => (
-              <button
-                key={c.label}
-                type="button"
-                onClick={() => setCustomColorLabel(c.label)}
-                className={cn(
-                  'flex items-center gap-2 rounded-card border px-3 py-2 text-sm transition-colors',
-                  c.label === customColorLabel
-                    ? 'border-brand-500 bg-brand-50 text-brand-700'
-                    : 'border-paper-line bg-white text-ink-soft hover:border-ink-faint',
-                )}
-              >
-                <span
-                  className="h-4 w-4 rounded-full border border-paper-line"
-                  style={{ backgroundColor: c.hex }}
-                  aria-hidden
-                />
-                {c.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      ) : null}
+            </>
+          ) : null
+        }
+      />
 
       <div className="flex items-center gap-3">
         <div className="flex items-center rounded-card border border-paper-line bg-white">

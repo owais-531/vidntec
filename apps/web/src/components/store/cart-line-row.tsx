@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 import { formatMoney, type CartLine } from '@vidntec/shared';
 import { removeCartLineAction, updateCartLineAction } from '@/lib/cart/actions';
+import { PersonalizationSummary } from '@/components/personalization-summary';
 import { toast } from '@/components/ui/toast';
 
 export function CartLineRow({ line }: { line: CartLine }) {
@@ -43,23 +44,7 @@ export function CartLineRow({ line }: { line: CartLine }) {
             {line.productTitle}
           </Link>
           <p className="text-xs text-ink-muted">{line.variantName}</p>
-          {line.customName || line.customColorLabel ? (
-            <p className="mt-0.5 flex items-center gap-1.5 text-xs text-ink-soft">
-              {line.customName ? <span>“{line.customName}”</span> : null}
-              {line.customColorLabel ? (
-                <span className="inline-flex items-center gap-1">
-                  {line.customColorHex ? (
-                    <span
-                      className="h-2.5 w-2.5 rounded-full border border-paper-line"
-                      style={{ backgroundColor: line.customColorHex }}
-                      aria-hidden
-                    />
-                  ) : null}
-                  {line.customColorLabel}
-                </span>
-              ) : null}
-            </p>
-          ) : null}
+          <PersonalizationSummary selections={line.personalization} />
           <p className="mt-1 text-xs text-ink-soft">{formatMoney(line.unitPrice)} each</p>
 
           <div className="mt-2 flex items-center gap-3">

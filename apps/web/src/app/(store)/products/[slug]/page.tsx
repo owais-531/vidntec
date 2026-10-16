@@ -156,10 +156,13 @@ export default async function ProductDetailPage({
         scope={product.scope}
         images={product.images}
         variants={product.variants}
-        customizationNameEnabled={product.customizationNameEnabled}
-        customizationColorEnabled={product.customizationColorEnabled}
-        customizationColorOptions={product.customizationColorOptions}
+        personalizationFields={product.personalizationFields}
         previewEnabled={product.previewEnabled}
+        previewFields={{
+          nameId: product.previewNameFieldId,
+          initialId: product.previewInitialFieldId,
+          colourId: product.previewColourFieldId,
+        }}
         productSlug={product.slug}
         specs={product.specs}
         productUrl={absoluteUrl(path)}

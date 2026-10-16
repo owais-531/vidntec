@@ -2,7 +2,7 @@
 
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
-import { CART_COOKIE, type CartView } from '@vidntec/shared';
+import { CART_COOKIE, type CartView, type PersonalizationInput } from '@vidntec/shared';
 import { apiCall } from '../api';
 import { parseSetCookies } from '../set-cookie';
 import { runAction, type ActionResult } from '../actions/result';
@@ -20,20 +20,15 @@ function revalidateCartViews(): void {
   revalidatePath('/', 'layout'); // header badge
 }
 
-export interface AddToCartPersonalization {
-  customName?: string;
-  customColorLabel?: string;
-}
-
 export async function addToCartAction(
   variantId: string,
   quantity = 1,
-  personalization: AddToCartPersonalization = {},
+  personalization: PersonalizationInput = {},
 ): Promise<ActionResult<CartView>> {
   const res = await runAction(async () => {
     const { data, setCookies } = await apiCall<CartView>('/cart/items', {
       method: 'POST',
-      body: JSON.stringify({ variantId, quantity, ...personalization }),
+      body: JSON.stringify({ variantId, quantity, personalization }),
     });
     await relayCartCookie(setCookies);
     return data;

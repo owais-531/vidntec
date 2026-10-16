@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ConflictException } from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import { CartService } from './cart.service';
 
 /** Minimal in-memory-ish Prisma stub for the branches we care about. */
@@ -108,5 +108,55 @@ describe('CartService.getView', () => {
     expect(view.subtotal).toBe(3000);
     expect(view.removedCount).toBe(1);
     expect(ctx.prisma.cartItem.deleteMany).toHaveBeenCalledWith({ where: { id: { in: ['i2'] } } });
+  });
+});
+
+describe('CartService.addItem personalization', () => {
+  const fields = [
+    { id: 'name', type: 'text', label: 'Name', required: true, placeholder: '', maxLength: 10 },
+    {
+      id: 'colour',
+      type: 'dropdown',
+      label: 'Colour',
+      required: false,
+      choices: [{ label: 'Red', hex: '#ff0000' }],
+    },
+  ];
+  let ctx: ReturnType<typeof make>;
+  beforeEach(() => {
+    ctx = make();
+    ctx.prisma.variant.findUnique.mockResolvedValue({
+      id: 'v1',
+      stock: 50,
+      product: { status: 'active', personalizationFields: fields },
+    });
+    ctx.prisma.cartItem.findFirst.mockResolvedValue(null);
+  });
+
+  it('stores the answers, with the hex from the product, and a key', async () => {
+    await ctx.service.addItem('c1', 'v1', 1, { name: ' Ali ', colour: 'Red' });
+    const data = ctx.prisma.cartItem.create.mock.calls[0][0].data;
+    expect(data.personalization).toEqual([
+      { fieldId: 'name', label: 'Name', type: 'text', value: 'Ali' },
+      { fieldId: 'colour', label: 'Colour', type: 'dropdown', value: 'Red', hex: '#ff0000' },
+    ]);
+    expect(data.customizationKey).toBe('[["name","Ali"],["colour","Red"]]');
+  });
+
+  it('looks up the existing line by variant + key (different names stay separate lines)', async () => {
+    await ctx.service.addItem('c1', 'v1', 1, { name: 'Sara' });
+    expect(ctx.prisma.cartItem.findFirst.mock.calls[0][0].where).toEqual({
+      cartId: 'c1',
+      variantId: 'v1',
+      customizationKey: '[["name","Sara"]]',
+    });
+  });
+
+  it('rejects a missing required field and an invalid choice', async () => {
+    await expect(ctx.service.addItem('c1', 'v1', 1, {})).rejects.toThrow(BadRequestException);
+    await expect(
+      ctx.service.addItem('c1', 'v1', 1, { name: 'Ali', colour: 'Hacked' }),
+    ).rejects.toThrow(BadRequestException);
+    expect(ctx.prisma.cartItem.create).not.toHaveBeenCalled();
   });
 });

@@ -75,7 +75,9 @@ export function VariantPicker({
     (f) => f.type === 'text' && f.id === previewFields.nameId,
   );
   const customName = nameField ? (answers[nameField.id] ?? '') : '';
-  const initialAnswer = previewFields.initialId ? (answers[previewFields.initialId] ?? '').trim() : '';
+  const initialAnswer = previewFields.initialId
+    ? (answers[previewFields.initialId] ?? '').trim()
+    : '';
   const colourAnswer = previewFields.colourId ? (answers[previewFields.colourId] ?? '') : '';
   const showPreview = previewEnabled && !!nameField;
   const previewKey = `${customName.trim()}|${initialAnswer}|${colourAnswer}|${selected.id}`;
@@ -95,7 +97,12 @@ export function VariantPicker({
         ...(colourAnswer ? { colourChoice: colourAnswer } : {}),
       });
       if (res.ok) {
-        setPreview({ status: 'done', image: res.data.imageDataUrl, key, remaining: res.data.remaining });
+        setPreview({
+          status: 'done',
+          image: res.data.imageDataUrl,
+          key,
+          remaining: res.data.remaining,
+        });
       } else {
         setPreview((p) => ({
           ...p,
@@ -220,13 +227,17 @@ export function VariantPicker({
                       className="flex aspect-[2/3] w-full max-w-xs animate-pulse flex-col items-center justify-center gap-2 rounded-card border border-paper-line bg-paper-sunken p-4 text-center"
                       role="status"
                     >
-                      <span className="text-sm font-medium text-ink-soft">Creating your preview…</span>
+                      <span className="text-sm font-medium text-ink-soft">
+                        Creating your preview…
+                      </span>
                       <span className="text-xs text-ink-muted">This takes about 20 seconds.</span>
                     </div>
                   ) : null}
 
                   {preview.status === 'error' ? (
-                    <p className="rounded-card bg-brand-50 px-3 py-2 text-xs text-brand-700">{preview.error}</p>
+                    <p className="rounded-card bg-brand-50 px-3 py-2 text-xs text-brand-700">
+                      {preview.error}
+                    </p>
                   ) : null}
 
                   {preview.image && preview.status !== 'loading' ? (
@@ -256,31 +267,43 @@ export function VariantPicker({
         }
       />
 
-      <div className="flex items-center gap-3">
-        <div className="flex items-center rounded-card border border-paper-line bg-white">
-          <button
-            type="button"
-            onClick={() => setQty((q) => Math.max(1, q - 1))}
-            className="px-3 py-2 text-ink-soft hover:text-ink"
-            aria-label="Decrease quantity"
+      <div>
+        <span
+          id="quantity-label"
+          className="mb-2 block text-xs font-medium uppercase tracking-wide text-ink-muted"
+        >
+          Quantity
+        </span>
+        <div className="flex items-center gap-3">
+          <div
+            role="group"
+            aria-labelledby="quantity-label"
+            className="flex items-center rounded-card border border-paper-line bg-white"
           >
-            −
-          </button>
-          <span className="w-8 text-center text-sm tabular-nums">{qty}</span>
-          <button
-            type="button"
-            onClick={() => setQty((q) => Math.min(maxQty, q + 1))}
-            className="px-3 py-2 text-ink-soft hover:text-ink disabled:opacity-30"
-            disabled={qty >= maxQty}
-            aria-label="Increase quantity"
-          >
-            +
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={() => setQty((q) => Math.max(1, q - 1))}
+              className="px-3 py-2 text-ink-soft hover:text-ink"
+              aria-label="Decrease quantity"
+            >
+              −
+            </button>
+            <span className="w-8 text-center text-sm tabular-nums">{qty}</span>
+            <button
+              type="button"
+              onClick={() => setQty((q) => Math.min(maxQty, q + 1))}
+              className="px-3 py-2 text-ink-soft hover:text-ink disabled:opacity-30"
+              disabled={qty >= maxQty}
+              aria-label="Increase quantity"
+            >
+              +
+            </button>
+          </div>
 
-        <Button className="flex-1" onClick={addToCart} disabled={pending || !selected.inStock}>
-          {pending ? 'Adding…' : selected.inStock ? 'Add to cart' : 'Sold out'}
-        </Button>
+          <Button className="flex-1" onClick={addToCart} disabled={pending || !selected.inStock}>
+            {pending ? 'Adding…' : selected.inStock ? 'Add to cart' : 'Sold out'}
+          </Button>
+        </div>
       </div>
 
       <a

@@ -51,7 +51,7 @@ export const envSchema = z.object({
 
   // OpenAI (storefront chatbot, admin Scope drafts, product image previews)
   OPENAI_API_KEY: z.string().min(1),
-  OPENAI_IMAGE_MODEL: z.string().min(1).default('gpt-image-1'),
+  OPENAI_IMAGE_MODEL: z.string().min(1).default('gpt-image-1.5'),
 
   // Sentry
   SENTRY_DSN: optionalUrl,

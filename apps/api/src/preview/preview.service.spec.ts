@@ -46,7 +46,7 @@ function make(opts: { key?: string; product?: unknown; mine?: number; all?: numb
     },
   };
   const config = {
-    get: vi.fn((k: string) => (k === 'OPENAI_API_KEY' ? (opts.key ?? REAL_KEY) : 'gpt-image-1')),
+    get: vi.fn((k: string) => (k === 'OPENAI_API_KEY' ? (opts.key ?? REAL_KEY) : 'gpt-image-1.5')),
   } as unknown as ConfigService;
   const service = new PreviewService(prisma as never, config as never);
   const edit = vi.fn().mockResolvedValue({ data: [{ b64_json: 'QUJD' }] });

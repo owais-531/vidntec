@@ -53,7 +53,7 @@ export class PreviewService {
     config: ConfigService<Env, true>,
   ) {
     this.client = createOpenAiClient(config.get('OPENAI_API_KEY', { infer: true }));
-    this.model = config.get('OPENAI_IMAGE_MODEL', { infer: true }) ?? 'gpt-image-1';
+    this.model = config.get('OPENAI_IMAGE_MODEL', { infer: true }) ?? 'gpt-image-1.5';
   }
 
   /** Customer-facing: active product with previews switched on, per-visitor + global caps. */
